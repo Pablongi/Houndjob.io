@@ -1,0 +1,52 @@
+/* Definir las variables CSS globales */
+:root {
+  --glacier: #79b2c6;
+  --elephant: #133b54; /* Usamos el segundo valor definido */
+  --blue-bayoux: #4c6877;
+  --raven: #717d89;
+  --river-bed: #404e89;
+  --slate-gray: #7b8c94;
+  --horizon: #55849c;
+  --rhino: #294656;
+  --san-juan: #30546c;
+}
+
+body {
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--blue-bayoux); /* Cambiamos el fondo del cuerpo a un tono de la paleta */
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 768px) {
+  .AppContainer { flex-direction: column; padding: 10px; }
+  .MainContent { flex: none; width: 100%; }
+  .Sidebar { flex: none; width: 100%; transform: translateX(0) !important; }
+  .Sidebar.collapsed { display: none; }
+  .JobCard { flex-direction: column; align-items: flex-start; width: 100%; height: auto; }
+  .CompanySection { flex-direction: column; align-items: flex-end; }
+  .CompanyDetails { text-align: left; margin-top: 10px; }
+  .CompanyLogo { margin-left: 0; margin-top: 10px; }
+  .FilterSection { flex-direction: column; }
+  .ApplyButton { min-height: 48px; width: 100%; }
+  .RecommendedJobs { margin-right: 0; }
+  .FeedbackSection { margin-right: 0; }
+  .AdsSection { margin-right: 0; }
+}
