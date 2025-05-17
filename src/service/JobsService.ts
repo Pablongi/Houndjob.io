@@ -6,12 +6,12 @@ const API_URL = 'https://houndjobback.fly.dev';
 interface ApiJob {
   id: string;
   description: string;
+  publicUrl: string;
   attributes: {
     title: string;
     company: string;
     portal: string;
     creation_date: string | number;
-    publicUrl: string;
     logo_url?: string; // Añadido para soportar logo_url
   };
 }
@@ -79,7 +79,7 @@ const JobsService = {
           company: job.attributes.company || 'Unknown Company',
           portal,
           published: normalizeCreationDate(job.attributes.creation_date, portal),
-          publicUrl: job.attributes.publicUrl || '#',
+          publicUrl: job.publicUrl || '#',
           tags,
           companyLogo: job.attributes.logo_url || undefined, // Usamos logo_url directamente
         };
