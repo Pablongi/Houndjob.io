@@ -1,74 +1,124 @@
 import axios from 'axios';
+import { TagsService } from './TagsService';
 
-const API_URL = 'https://houndjobback.fly.dev/getonboard';
-const CACHE_KEY = 'getonbrd_jobs_cache';
-const CACHE_DURATION = 60 * 60 * 1000; // 1 hora en milisegundos
+const API_URL = 'https://houndjobback.fly.dev';
+
+interface ApiJob {
+  id: string;
+  description: string;
+  attributes: {
+    title: string;
+    company: string;
+    portal: string;
+    creation_date: string | number;
+    publicUrl: string;
+    logo_url?: string; // Añadido para soportar logo_url
+  };
+}
 
 interface Filters {
   [key: string]: string | number;
 }
 
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  portal: string;
+  published: number;
+  publicUrl: string;
+  tags: string[];
+  companyLogo?: string; // Añadido para soportar el logo
+}
+
 interface ApiResponse {
-  data: any[];
+  data: Job[];
+  total: number;
 }
 
 const JobsService = {
-  getJobs: async (filters: Filters = {}, page: number = 1, perPage: number = 40): Promise<ApiResponse> => {
-    const cachedData = localStorage.getItem(CACHE_KEY);
-    const cachedTimestamp = localStorage.getItem(`${CACHE_KEY}_timestamp`);
-    const now = Date.now();
-
-    if (cachedData && cachedTimestamp && now - parseInt(cachedTimestamp) < CACHE_DURATION) {
-      return JSON.parse(cachedData);
-    }
-
+  getJobs: async (filters: Filters = {}, maxResults: number = 200): Promise<ApiResponse> => {
     try {
-      const queries = [
-        'Chile',
-        'Santiago',
-        'Valparaíso',
-        'Concepción',
-        'Antofagasta',
-        'Viña del Mar',
-      ];
+      let url = `${API_URL}/alloffers`;
+      let params: { [key: string]: string | number } = {};
 
-      const requests = queries.map((query) =>
-        axios
-          .get(`${API_URL}?jobs=${query}`)
-          .catch((error) => {
-            console.error(`Error fetching jobs for query "${query}":`, error.response || error.message);
-            return { data: [] }; // Devolver un arreglo vacío si la solicitud falla
-          })
-      );
-      const responses = await Promise.all(requests);
+      if (filters.search) {
+        url = `${API_URL}/offers`;
+        params = { ...params, jobs: filters.search };
+      }
 
-      const allJobs = responses
-        .flatMap((response) => (Array.isArray(response.data) ? response.data : []))
-        .filter((job, index, self) =>
-          index === self.findIndex((j) => j.id === job.id)
-        );
+      const response = await axios.get(url, { params }).catch((error) => {
+        console.error(`Error fetching jobs:`, error.response?.data || error.message);
+        return { data: [], total: 0 };
+      });
 
-      console.log('Total jobs fetched:', allJobs.length);
-      console.log('Sample job data:', allJobs[0]); // Mostrar un ejemplo de los datos obtenidos
-      const data: ApiResponse = { data: allJobs };
+      const allJobs: ApiJob[] = Array.isArray(response.data) ? response.data : [];
+      console.log('Jobs fetched from API:', allJobs); // Depuración
 
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-      localStorage.setItem(`${CACHE_KEY}_timestamp`, now.toString());
+      const normalizeCreationDate = (creationDate: string | number, portal: string): number => {
+        if (!creationDate) return 0;
+        if (portal === 'Get On Board') {
+          const timestamp = parseInt(creationDate.toString(), 10);
+          return isNaN(timestamp) || timestamp <= 0 ? 0 : timestamp;
+        }
+        const [day, month, year] = creationDate.toString().split('/').map(Number);
+        const fullYear = year < 100 ? 2000 + year : year;
+        return Math.floor(new Date(fullYear, month - 1, day).getTime() / 1000);
+      };
 
-      return data;
+      const normalizeJob = (job: ApiJob): Job => {
+        const portal = job.attributes.portal || 'Unknown';
+        const description = job.description || '';
+        console.log(`Description for job ${job.attributes.title}:`, description); // Depuración
+        const tags = description ? TagsService.extractTags(description) : [];
+        console.log(`Tags extracted for job ${job.attributes.title}:`, tags); // Depuración
+
+        return {
+          id: job.id || `job-${Date.now()}-${Math.random()}`,
+          title: job.attributes.title || 'Untitled Job',
+          company: job.attributes.company || 'Unknown Company',
+          portal,
+          published: normalizeCreationDate(job.attributes.creation_date, portal),
+          publicUrl: job.attributes.publicUrl || '#',
+          tags,
+          companyLogo: job.attributes.logo_url || undefined, // Usamos logo_url directamente
+        };
+      };
+
+      const uniqueJobs: Job[] = allJobs
+        .filter((job: ApiJob, index: number, self: ApiJob[]) => index === self.findIndex((j) => j.id === job.id))
+        .map(normalizeJob)
+        .sort((a, b) => b.published - a.published)
+        .slice(0, maxResults);
+
+      return { data: uniqueJobs, total: uniqueJobs.length };
     } catch (error: any) {
-      console.log('Error completo al obtener trabajos:', error.response || error.message);
-      throw new Error(`Error al obtener los trabajos de la API: ${error.message}`);
+      console.error('Error fetching jobs:', error.response?.data || error.message);
+      return { data: [], total: 0 };
     }
   },
 
-  getCompanyLogo: async (companyId: string): Promise<string | null> => {
+  formatPublishedDate: (published: number, portal: string): string => {
+    if (published === 0) return 'N/A';
+    const now = Date.now();
+    const publishedDate = published * 1000; // Convertir a milisegundos
+    const diffMs = now - publishedDate;
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 0) return `${diffDays} día${diffDays > 1 ? 's' : ''} atrás`;
+    if (diffHours > 0) return `${diffHours} hora${diffHours > 1 ? 's' : ''} atrás`;
+    return `${diffMinutes} minuto${diffMinutes > 1 ? 's' : ''} atrás`;
+  },
+
+  getCompanyLogo: async (companyId: string): Promise<string | undefined> => {
     try {
-      const response = await axios.get(`https://houndjobback.fly.dev/companies/${companyId}`);
-      return response.data?.data?.attributes?.logo || null;
+      const response = await axios.get(`${API_URL}/companies/${companyId}`);
+      return response.data.logo || undefined;
     } catch (error) {
-      console.error(`Error al obtener el logo de la empresa ${companyId}:`, error);
-      return null;
+      console.error(`Error fetching company logo for ${companyId}:`, error);
+      return undefined;
     }
   },
 };

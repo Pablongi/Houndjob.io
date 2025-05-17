@@ -1,0 +1,91 @@
+:root {
+  --zhipin-teal: #00c1de;
+  --zhipin-teal-dark: #00a1be;
+  --zhipin-gray: #f5f5f5;
+  --zhipin-text: #333;
+  --zhipin-text-light: #666;
+  --zhipin-border: #e8ecef;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --animate-duration: 0.5s;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--zhipin-gray);
+  color: var(--zhipin-text);
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 768px) {
+  .AppContainer { flex-direction: column; padding: 10px; }
+  .MainContent { flex: none; width: 100%; }
+  .Sidebar { flex: none; width: 100%; transform: translateX(0) !important; }
+  .Sidebar.collapsed { display: none; }
+  .JobCard { flex-direction: column; align-items: flex-start; width: 100%; height: auto; }
+  .CompanySection { flex-direction: column; align-items: flex-end; }
+  .CompanyDetails { text-align: left; margin-top: 10px; }
+  .CompanyLogo { margin-left: 0; margin-top: 10px; }
+  .FilterSection { flex-direction: column; }
+  .ApplyButton { min-height: 48px; width: 100%; }
+  .RecommendedJobs { margin-right: 0; }
+  .FeedbackSection { margin-right: 0; }
+  .AdsSection { margin-right: 0; }
+}
+
+/* Component-specific styles */
+.JobCard {
+  background: #fff;
+  border-color: var(--zhipin-border);
+}
+
+.JobTitle {
+  color: var(--zhipin-teal);
+}
+
+.JobTitle:hover {
+  color: var(--zhipin-teal-dark);
+}
+
+.Tag {
+  background: #f0f0f0;
+  color: var(--zhipin-text);
+  border-color: var(--zhipin-border);
+}
+
+.Tag:hover {
+  background: #e0e0e0;
+}
+
+.LinkButton {
+  background: var(--zhipin-teal);
+}
+
+.LinkButton:hover {
+  background: var(--zhipin-teal-dark);
+}
+
+.PageButton {
+  background: var(--zhipin-teal);
+}
+
+.PageButton:hover:not(:disabled) {
+  background: var(--zhipin-teal-dark);
+}
