@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import styled from 'styled-components';
 import { Job } from '../types/Job';
 import JobsService from '../service/JobsService';
@@ -165,6 +165,7 @@ const TimeLinkContainer = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-top: 8px;
+  gap: 8px;
 `;
 
 const TimeButton = styled(motion.button)`
@@ -178,6 +179,19 @@ const TimeButton = styled(motion.button)`
   @media (max-width: 768px) {
     font-size: 11px;
     padding: 3px 6px;
+  }
+`;
+
+const Badge = styled(motion.span)<{ isNew?: boolean }>`
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: #fff;
+  background: ${(props) => (props.isNew ? '#4CAF50' : 'var(--zhipin-teal)')};
+  font-weight: 600;
+  @media (max-width: 768px) {
+    font-size: 10px;
+    padding: 2px 5px;
   }
 `;
 
@@ -246,12 +260,6 @@ interface LastJobsProps {
 }
 
 const LastJobs: React.FC<LastJobsProps> = ({ jobs, page, perPage, totalJobs, onPageChange, onTagFilter }) => {
-  const [jobsWithLogos, setJobsWithLogos] = useState<Job[]>(jobs);
-
-  useEffect(() => {
-    setJobsWithLogos(jobs); // Usamos los logos directamente de la API
-  }, [jobs]);
-
   const totalPages = Math.ceil(totalJobs / perPage);
 
   return (
@@ -265,8 +273,9 @@ const LastJobs: React.FC<LastJobsProps> = ({ jobs, page, perPage, totalJobs, onP
       </Title>
       {jobs.length > 0 ? (
         <JobGrid>
-          {jobsWithLogos.map((job, index) => {
-            console.log(`Rendering job ${job.title}:`, { tags: job.tags, publicUrl: job.publicUrl, companyLogo: job.companyLogo }); // Depuración
+          {jobs.map((job, index) => {
+            console.log(`Rendering job ${job.title}:`, { tags: job.tags, publicUrl: job.publicUrl, companyLogo: job.companyLogo });
+            const { display, isNew, isToday } = JobsService.TimeFromPublished(job.published, job.portal);
             return (
               <Fade
                 key={job.id}
@@ -281,9 +290,15 @@ const LastJobs: React.FC<LastJobsProps> = ({ jobs, page, perPage, totalJobs, onP
                   whileHover={{ boxShadow: '0 4px 12px rgba(0, 193, 222, 0.3)' }}
                 >
                   <JobHeader>
-                    {job.companyLogo && <CompanyLogo src={job.companyLogo} alt={`${job.company} logo`} />}
+                    {job.companyLogo && (
+                      <CompanyLogo src={job.companyLogo} alt={`${job.company} logo`} />
+                    )}
                     <JobInfo>
-                      <JobTitle href={job.publicUrl} target="_blank" rel="noopener noreferrer">{job.title}</JobTitle>
+                      <JobTitle href={job.publicUrl} target="_blank" rel="noopener noreferrer">
+                        {job.title.replace(/[\u00E1\u00E9\u00ED\u00F3\u00FA]/g, (match) => ({
+                          '\u00E1': 'a', '\u00E9': 'e', '\u00ED': 'i', '\u00F3': 'o', '\u00FA': 'u'
+                        }[match] || match))}
+                      </JobTitle>
                       <Company>{job.company}</Company>
                       <PortalLogo
                         href={job.publicUrl}
@@ -310,7 +325,19 @@ const LastJobs: React.FC<LastJobsProps> = ({ jobs, page, perPage, totalJobs, onP
                     )}
                   </TagsContainer>
                   <TimeLinkContainer>
-                    <TimeButton>{JobsService.formatPublishedDate(job.published, job.portal)}</TimeButton>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {isNew && (
+                        <Badge isNew whileHover={{ scale: 1.05 }}>
+                          NEW!
+                        </Badge>
+                      )}
+                      {!isNew && isToday && (
+                        <Badge whileHover={{ scale: 1.05 }}>
+                          TODAY!
+                        </Badge>
+                      )}
+                      <TimeButton>{display}</TimeButton>
+                    </div>
                     <LinkButton
                       href={job.publicUrl}
                       target="_blank"

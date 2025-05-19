@@ -3,10 +3,13 @@ import styled from 'styled-components';
 import { Job } from '../types/Job';
 import { motion } from 'framer-motion';
 import { TAG_CATEGORIES } from '../service/TagsService';
+import JobsService from '../service/JobsService';
 
 interface FilterState {
   search: string;
   tags: Set<string>;
+  company: string | null;
+  portal: string | null;
 }
 
 interface JobSearchProps {
@@ -25,9 +28,54 @@ const Container = styled.div`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
   @media (max-width: 768px) {
     padding: 15px;
+  }
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #333;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #00c1de;
+`;
+
+const PortalFilterContainer = styled(motion.div)`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+  }
+`;
+
+const PortalButton = styled(motion.button)<{ active: boolean }>`
+  width: 100px;
+  height: 30px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: ${(props) => (props.active ? '#e0f7fa' : '#f5f5f5')};
+  border: 1px solid ${(props) => (props.active ? '#00c1de' : '#ddd')};
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  &:hover {
+    background-color: ${(props) => (props.active ? '#b2ebf2' : '#e0e0e0')};
+  }
+  &.bne {
+    background-image: url('/Logo-BNE-slogan-1.png');
+  }
+  &.getonboard {
+    background-image: url('/icon-new-c18debbaa69bac8df6158426f4a00752b32a7fba603cba4eeb3e4572466344a6.png');
+  }
+  @media (max-width: 768px) {
+    width: 80px;
+    height: 25px;
   }
 `;
 
@@ -44,7 +92,7 @@ const TopRow = styled(motion.div)`
 const SearchBar = styled(motion.div)`
   flex: 1;
   display: flex;
-  padding: 10px;
+  padding: 12px;
   background: #f5f5f5;
   border-radius: 6px;
   transition: background 0.2s ease;
@@ -62,62 +110,55 @@ const SearchInput = styled(motion.input)`
   padding: 8px;
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 16px;
   color: #333;
   outline: none;
   &::placeholder {
     color: #999;
   }
   @media (max-width: 768px) {
-    font-size: 13px;
+    font-size: 14px;
   }
 `;
 
-const TagSection = styled(motion.div)`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 0;
-  @media (max-width: 768px) {
-    gap: 6px;
-  }
-`;
-
-const TagButton = styled(motion.button)<{ active: boolean }>`
-  padding: 6px 12px;
-  background: ${(props) => (props.active ? '#00c1de' : '#f5f5f5')};
-  color: ${(props) => (props.active ? '#fff' : '#333')};
-  border: 1px solid ${(props) => (props.active ? '#00c1de' : '#ddd')};
+const SearchButton = styled(motion.button)`
+  padding: 8px 15px;
+  background: #00c1de;
+  color: white;
+  border: none;
   border-radius: 4px;
-  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  margin-left: 10px;
+  font-size: 16px;
+  transition: background 0.2s ease;
   &:hover {
-    background: ${(props) => (props.active ? '#00a1be' : '#e0e0e0')};
+    background: #00a1be;
   }
   @media (max-width: 768px) {
-    font-size: 12px;
-    padding: 5px 10px;
+    padding: 6px 12px;
+    font-size: 14px;
+    margin-left: 0;
+    margin-top: 5px;
   }
 `;
 
 const FilterRow = styled(motion.div)`
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 20px;
   padding: 10px 0;
   @media (max-width: 768px) {
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
   }
 `;
 
 const FilterCategory = styled(motion.div)`
-  padding: 15px;
+  padding: 20px;
   background: #fff;
   border: 1px solid #e8ecef;
   border-radius: 6px;
-  min-width: 220px;
+  min-width: 250px;
   transition: box-shadow 0.2s ease;
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 193, 222, 0.1);
@@ -128,38 +169,85 @@ const FilterCategory = styled(motion.div)`
 `;
 
 const FilterLabel = styled.div`
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 `;
 
 const FilterOptions = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 `;
 
 const FilterOption = styled(motion.button)<{ active: boolean }>`
-  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
   background: ${(props) => (props.active ? '#00c1de' : '#f5f5f5')};
   color: ${(props) => (props.active ? '#fff' : '#333')};
   border: 1px solid ${(props) => (props.active ? '#00c1de' : '#ddd')};
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
   &:hover {
     background: ${(props) => (props.active ? '#00a1be' : '#e0e0e0')};
   }
   @media (max-width: 768px) {
-    font-size: 12px;
-    padding: 5px 10px;
+    font-size: 13px;
+    padding: 5px 8px;
   }
 `;
 
+const CompanyLogoFilter = styled.img`
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #f5f5f5;
+  border: 1px solid #e8ecef;
+`;
+
+const CategoryTagWrapper = styled.div`
+  margin: 8px 0;
+`;
+
+const CategoryTitle = styled.strong`
+  font-size: 14px;
+  display: block;
+  margin-bottom: 8px;
+`;
+
 const JobSearch: React.FC<JobSearchProps> = ({ jobs, onFilter, activeFilters }) => {
-  const [filters, setFilters] = useState<FilterState>(activeFilters);
+  const [filters, setFilters] = useState<FilterState>({
+    search: activeFilters.search || '',
+    tags: activeFilters.tags || new Set(),
+    company: activeFilters.company || null,
+    portal: activeFilters.portal || null,
+  });
+  const [companyLogos, setCompanyLogos] = useState<{ [key: string]: string | undefined }>({});
+
+  useEffect(() => {
+    setFilters(activeFilters);
+  }, [activeFilters]);
+
+  useEffect(() => {
+    const fetchLogos = async () => {
+      const uniqueCompanies = Array.from(new Set(jobs.map((job) => job.company)));
+      const logos = { ...companyLogos };
+      for (const company of uniqueCompanies) {
+        if (!logos[company]) {
+          const logo = await JobsService.getCompanyLogo(company);
+          logos[company] = logo || undefined;
+        }
+      }
+      setCompanyLogos(logos);
+    };
+    if (jobs.length > 0) fetchLogos();
+  }, [jobs]);
 
   const getTopTags = () => {
     const tagCount: { [key: string]: number } = {};
@@ -175,58 +263,101 @@ const JobSearch: React.FC<JobSearchProps> = ({ jobs, onFilter, activeFilters }) 
   };
 
   const getTopCompanies = () => {
-    const companyCount: { [key: string]: number } = {};
+    const companyData: { [key: string]: { count: number; logo?: string } } = {};
     jobs.forEach((job) => {
-      companyCount[job.company] = (companyCount[job.company] || 0) + 1;
+      if (!companyData[job.company]) {
+        companyData[job.company] = { count: 0, logo: companyLogos[job.company] || job.companyLogo };
+      }
+      companyData[job.company].count += 1;
     });
-    return Object.entries(companyCount)
-      .sort(([, a], [, b]) => b - a)
+    return Object.entries(companyData)
+      .sort(([, a], [, b]) => b.count - a.count)
       .slice(0, 10)
-      .map(([company]) => company);
+      .map(([company, { logo }]) => ({
+        company,
+        logo: logo || undefined,
+        hasLogo: !!logo && logo !== '/unkownbusiness.png',
+      }));
   };
 
-  const getTopCategories = () => {
+  const getTopCategoriesWithTags = () => {
     const categoryCount: { [key: string]: number } = {};
+    const tagByCategory: { [key: string]: Set<string> } = {};
+
     jobs.forEach((job) => {
       job.tags.forEach((tag) => {
-        for (const { categoría, subcategorías } of TAG_CATEGORIES) {
+        TAG_CATEGORIES.forEach(({ categoría, subcategorías }) => {
           for (const [, tags] of Object.entries(subcategorías)) {
             if ((tags as string[]).includes(tag)) {
               categoryCount[categoría] = (categoryCount[categoría] || 0) + 1;
+              if (!tagByCategory[categoría]) tagByCategory[categoría] = new Set();
+              tagByCategory[categoría].add(tag);
               break;
             }
           }
-        }
+        });
       });
     });
-    return Object.entries(categoryCount)
+
+    const topCategories = Object.entries(categoryCount)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
-      .map(([category]) => category);
+      .map(([category]) => ({
+        category,
+        tags: Array.from(tagByCategory[category] || new Set())
+          .sort((a, b) => {
+            const countA = jobs.filter((j) => j.tags.includes(a)).length;
+            const countB = jobs.filter((j) => j.tags.includes(b)).length;
+            return countB - countA;
+          })
+          .slice(0, 5),
+      }));
+
+    return topCategories;
   };
 
-  useEffect(() => {
-    setFilters(activeFilters);
-  }, [activeFilters]);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFilters = { ...filters, search: e.target.value, portal: null };
+    setFilters(newFilters);
+    onFilter(newFilters);
+  };
+
+  const handleSearchSubmit = (
+    e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLButtonElement>
+  ) => {
+    if (e.type === 'click' || (e as React.KeyboardEvent<HTMLInputElement>).key === 'Enter') {
+      const newFilters = { ...filters, portal: null };
+      setFilters(newFilters);
+      onFilter(newFilters);
+    }
+  };
+
+  const toggleTagFilter = (tag: string) => {
+    const newTags = new Set(filters.tags);
+    if (newTags.has(tag)) newTags.delete(tag);
+    else newTags.add(tag);
+    const newFilters = { ...filters, tags: newTags, company: null, portal: null };
+    setFilters(newFilters);
+    onFilter(newFilters);
+  };
+
+  const toggleCompanyFilter = (company: string) => {
+    const newCompany = filters.company === company ? null : company;
+    const newFilters = { ...filters, company: newCompany, tags: new Set<string>(), portal: null };
+    setFilters(newFilters);
+    onFilter(newFilters);
+  };
+
+  const togglePortalFilter = (portal: string) => {
+    const newPortal = filters.portal === portal ? null : portal;
+    const newFilters = { ...filters, portal: newPortal, tags: new Set<string>(), company: null };
+    setFilters(newFilters);
+    onFilter(newFilters);
+  };
 
   const topTags = getTopTags();
   const topCompanies = getTopCompanies();
-  const topCategories = getTopCategories();
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFilters = { ...filters, search: e.target.value };
-    setFilters(newFilters);
-    onFilter(newFilters);
-  };
-
-  const toggleFilter = (value: string) => {
-    const newTags = new Set(filters.tags);
-    if (newTags.has(value)) newTags.delete(value);
-    else newTags.add(value);
-    const newFilters = { ...filters, tags: newTags };
-    setFilters(newFilters);
-    onFilter(newFilters);
-  };
+  const topCategoriesWithTags = getTopCategoriesWithTags();
 
   return (
     <Container className="animate__animated animate__fadeIn">
@@ -243,64 +374,94 @@ const JobSearch: React.FC<JobSearchProps> = ({ jobs, onFilter, activeFilters }) 
           <SearchInput
             value={filters.search}
             onChange={handleSearchChange}
+            onKeyPress={handleSearchSubmit}
             placeholder="Search jobs or companies..."
             whileFocus={{ scale: 1.02 }}
           />
+          <SearchButton
+            onClick={handleSearchSubmit}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            🔍
+          </SearchButton>
         </SearchBar>
       </TopRow>
-      <TagSection
-        initial={{ opacity: 0, y: 20 }}
+      <SectionTitle>Portales</SectionTitle>
+      <PortalFilterContainer
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
+        transition={{ duration: 0.5 }}
       >
-        {topTags.length > 0 ? (
-          topTags.map((tag) => (
-            <TagButton
-              key={tag}
-              active={filters.tags.has(tag)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => toggleFilter(tag)}
-            >
-              #{tag}
-            </TagButton>
-          ))
-        ) : (
-          <div>No tags available</div>
-        )}
-      </TagSection>
+        <PortalButton
+          className="bne"
+          active={filters.portal === 'BNE.cl'}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => togglePortalFilter('BNE.cl')}
+        />
+        <PortalButton
+          className="getonboard"
+          active={filters.portal === 'Get On Board'}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => togglePortalFilter('Get On Board')}
+        />
+      </PortalFilterContainer>
       <FilterRow
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.5 }}
       >
         <FilterCategory>
-          <FilterLabel>Top Categories</FilterLabel>
+          <FilterLabel>Tags más repetidos:</FilterLabel>
           <FilterOptions>
-            {topCategories.map((category) => (
+            {topTags.map((tag) => (
               <FilterOption
-                key={category}
-                active={filters.tags.has(category)}
+                key={tag}
+                active={filters.tags.has(tag)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => toggleFilter(category)}
+                onClick={() => toggleTagFilter(tag)}
               >
-                {category}
+                #{tag}
               </FilterOption>
+            ))}
+          </FilterOptions>
+        </FilterCategory>
+        <FilterCategory>
+          <FilterLabel>Top Categories</FilterLabel>
+          <FilterOptions>
+            {topCategoriesWithTags.map(({ category, tags }) => (
+              <CategoryTagWrapper key={category}>
+                <CategoryTitle>{category}</CategoryTitle>
+                {tags.map((tag) => (
+                  <FilterOption
+                    key={tag}
+                    active={filters.tags.has(tag)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => toggleTagFilter(tag)}
+                  >
+                    #{tag}
+                  </FilterOption>
+                ))}
+              </CategoryTagWrapper>
             ))}
           </FilterOptions>
         </FilterCategory>
         <FilterCategory>
           <FilterLabel>Popular Companies</FilterLabel>
           <FilterOptions>
-            {topCompanies.map((company) => (
+            {topCompanies.map(({ company, logo, hasLogo }) => (
               <FilterOption
                 key={company}
-                active={filters.tags.has(company)}
+                active={filters.company === company}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => toggleFilter(company)}
+                onClick={() => toggleCompanyFilter(company)}
               >
+                {hasLogo && logo && <CompanyLogoFilter src={logo} alt={`${company} logo`} />}
                 {company}
               </FilterOption>
             ))}

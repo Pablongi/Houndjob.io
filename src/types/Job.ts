@@ -7,4 +7,5 @@ export interface Job {
   publicUrl: string;
   tags: string[];
   companyLogo?: string;
+  rawCreationDate?: string | number; // Added for debugging
 }

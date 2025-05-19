@@ -1,157 +1,149 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import JobSearch from './components/JobSearch';
-import LastJobs from './components/LastJobs';
 import HeaderFooter from './components/HeaderFooter';
+import LastJobs from './components/LastJobs';
+import JobSearch from './components/JobSearch';
 import JobsService from './service/JobsService';
 import { Job } from './types/Job';
-import 'animate.css';
-import { motion } from 'framer-motion';
-import 'animate.css/animate.min.css';
-import './global.css';
+import styled from 'styled-components';
+
+const AppContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f5f5f5;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: #d32f2f;
+  font-size: 1.2em;
+`;
 
 interface FilterState {
   search: string;
   tags: Set<string>;
+  company: string | null;
+  portal: string | null;
 }
-
-const MainContent = styled.main`
-  min-height: calc(100vh - 140px);
-  padding: 20px;
-  background: #f5f5f5;
-`;
-
-const LoadingSpinner = styled(motion.div)`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100px;
-  font-size: 1.2em;
-  color: #00c1de;
-  position: relative;
-  &::before {
-    content: '';
-    width: 40px;
-    height: 40px;
-    border: 4px solid #00c1de;
-    border-top: 4px solid transparent;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    position: absolute;
-    left: -50px;
-  }
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
 
 const App: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [totalJobs, setTotalJobs] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const [perPage] = useState<number>(10);
   const [filters, setFilters] = useState<FilterState>({
     search: '',
     tags: new Set(),
+    company: null,
+    portal: null,
   });
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const perPage = 40;
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
-      setLoading(true);
-      const fetchedJobs = await JobsService.getJobs();
-      setJobs(fetchedJobs.data);
-      setFilteredJobs(fetchedJobs.data);
-      setLoading(false);
+      try {
+        setError(null);
+        const response = await JobsService.getJobs();
+        setJobs(response.data);
+        setFilteredJobs(response.data);
+        setTotalJobs(response.total);
+      } catch (err: any) {
+        console.error('Failed to load jobs:', err);
+        setError('Failed to load jobs. Please try again later.');
+        setJobs([]);
+        setFilteredJobs([]);
+        setTotalJobs(0);
+      }
     };
     fetchJobs();
   }, []);
 
-  const applyFilters = (newFilters: FilterState) => {
+  useEffect(() => {
+    const applyFilters = () => {
+      let result = [...jobs];
+
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        result = result.filter(
+          (job) =>
+            job.title.toLowerCase().includes(searchLower) ||
+            job.company.toLowerCase().includes(searchLower)
+        );
+      }
+
+      if (filters.tags.size > 0) {
+        result = result.filter((job) =>
+          Array.from(filters.tags).every((tag) => job.tags.includes(tag))
+        );
+      }
+
+      if (filters.company) {
+        result = result.filter((job) => job.company === filters.company);
+      }
+
+      if (filters.portal) {
+        result = result.filter((job) => job.portal === filters.portal);
+      }
+
+      setFilteredJobs(result);
+      setTotalJobs(result.length);
+      setPage(1);
+    };
+    applyFilters();
+  }, [filters, jobs]);
+
+  const handleFilter = (newFilters: FilterState) => {
     setFilters(newFilters);
-    const filtered = jobs.filter((job: Job) => {
-      const matchesSearch = newFilters.search
-        ? job.title.toLowerCase().includes(newFilters.search.toLowerCase()) ||
-          job.company.toLowerCase().includes(newFilters.search.toLowerCase())
-        : true;
-      const matchesTags = newFilters.tags.size
-        ? job.tags.some((tag) => newFilters.tags.has(tag))
-        : true;
-      return matchesSearch && matchesTags;
-    });
-    setFilteredJobs(filtered);
-    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   const handleTagFilter = (tag: string) => {
     const newTags = new Set(filters.tags);
-    if (newTags.has(tag)) newTags.delete(tag);
-    else newTags.add(tag);
-    applyFilters({ ...filters, tags: newTags });
+    if (newTags.has(tag)) {
+      newTags.delete(tag);
+    } else {
+      newTags.add(tag);
+    }
+    setFilters({ ...filters, tags: newTags, company: null, portal: null });
   };
 
-  const resetFilters = () => {
+  const handleReset = () => {
     setFilters({
       search: '',
       tags: new Set(),
+      company: null,
+      portal: null,
     });
-    setFilteredJobs(jobs);
     setPage(1);
   };
 
   const paginatedJobs = filteredJobs.slice((page - 1) * perPage, page * perPage);
-  const totalJobs = filteredJobs.length;
 
   return (
-    <div>
-      <HeaderFooter onReset={resetFilters} />
-      <MainContent>
-        {loading ? (
-          <LoadingSpinner
-            initial={{ opacity: 0, rotate: 0 }}
-            animate={{ opacity: 1, rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity }}
-            className="animate__animated animate__rotateIn animate__pulse"
-          >
-            Loading jobs...
-          </LoadingSpinner>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <motion.div
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <JobSearch
-                jobs={jobs}
-                onFilter={applyFilters}
-                activeFilters={filters}
-              />
-            </motion.div>
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <LastJobs
-                jobs={paginatedJobs}
-                page={page}
-                perPage={perPage}
-                totalJobs={totalJobs}
-                onPageChange={setPage}
-                onTagFilter={handleTagFilter}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </MainContent>
-      <HeaderFooter isFooter />
-    </div>
+    <AppContainer>
+      <HeaderFooter onReset={handleReset} />
+      {error ? (
+        <ErrorMessage>{error}</ErrorMessage>
+      ) : (
+        <>
+          <JobSearch jobs={jobs} onFilter={handleFilter} activeFilters={filters} />
+          <LastJobs
+            jobs={paginatedJobs}
+            page={page}
+            perPage={perPage}
+            totalJobs={totalJobs}
+            onPageChange={handlePageChange}
+            onTagFilter={handleTagFilter}
+          />
+        </>
+      )}
+      <HeaderFooter isFooter={true} />
+    </AppContainer>
   );
 };
 
