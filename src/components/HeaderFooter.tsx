@@ -98,7 +98,7 @@ const HeaderFooter: React.FC<HeaderFooterProps> = ({ isFooter, onReset }) => {
   if (isFooter) {
     return (
       <Footer className="animate__animated animate__slideInUp">
-        © 2025 HoundJob | <FooterLink href="#terms">Términos</FooterLink> | <FooterLink href="#privacy">Privacidad</FooterLink> | <FooterLink href="#contact">Contáctanos</FooterLink>
+        © 2025 Hound | <FooterLink href="#terms">Términos</FooterLink> | <FooterLink href="#privacy">Privacidad</FooterLink> | <FooterLink href="#contact">Contáctanos</FooterLink>
       </Footer>
     );
   }
@@ -116,7 +116,7 @@ const HeaderFooter: React.FC<HeaderFooterProps> = ({ isFooter, onReset }) => {
           onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/40')}
         />
         <div>
-          <div>HoundJob</div>
+          <div>Hound</div>
           <Slogan>¡Todos los empleos en un solo lugar!</Slogan>
         </div>
       </Logo>
