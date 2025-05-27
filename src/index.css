@@ -1,5 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-
-body {
-  font-family: 'Poppins', sans-serif;
+:root {
+  --zhipin-text: #333;
+  --zhipin-teal: #008080;
+  --zhipin-border: #ccc;
+  --zhipin-text-light: #666;
+  --zhipin-teal-dark: #006666;
+  --zhipin-background: #f0f0f0;
 }
