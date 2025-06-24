@@ -1,15 +1,30 @@
 {
   "compilerOptions": {
-    "target": "es2015",
-    "module": "esnext",
-    "jsx": "react-jsx",
-    "strict": true,
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
     "esModuleInterop": true,
-    "downlevelIteration": true,
-    "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "src"
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "components/*": ["src/components/*"],
+      "types/*": ["src/types/*"],
+      "logic/*": ["src/logic/*"],
+      "utils/*": ["src/utils/*"]
+    },
+    "composite": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "*.config.*"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

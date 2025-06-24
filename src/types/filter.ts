@@ -7,4 +7,11 @@ export interface FilterState {
   selectedCountries: Set<string>;
   selectedRegions: Set<string>;
   company: string;
+  sortMode: 'recommended' | 'latest' | 'salary';
+}
+
+export interface RankedItem {
+  name: string;
+  count: number;
+  logo?: string;
 }

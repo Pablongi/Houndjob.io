@@ -1,0 +1,76 @@
+:root {
+  --zhipin-teal: #00c1de;
+  --zhipin-teal-dark: #00a1be;
+  --zhipin-gray: #f5f5f5;
+  --background: #f5f5f5;
+  --background-panel: #ffffff;
+  --background-secondary: #f8f9fa;
+  --chip-bg: #e8ecef;
+  --input-bg: #f5f5f5;
+  --text: #333;
+  --text-light: #666;
+  --border: #e8ecef;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --button-padding: 6px 12px;
+  --font-size-base: 14px;
+  --font-size-small: 12px;
+  --spacing-unit: 10px;
+}
+
+[data-theme="dark"] {
+  --zhipin-teal: #00c1de;
+  --zhipin-teal-dark: #00a1be;
+  --zhipin-gray: #1e1e1e;
+  --background: #1e1e1e;
+  --background-panel: #2a2a2a;
+  --background-secondary: #333333;
+  --chip-bg: #3a3a3a;
+  --input-bg: #333333;
+  --text: #e0e0e0;
+  --text-light: #a0a0a0;
+  --border: #444444;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--background);
+  color: var(--text);
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Mobile-first approach */
+.JobGrid {
+  grid-template-columns: 1fr;
+}
+
+.FilterPanelContainer {
+  padding: var(--spacing-unit);
+}
+
+.SearchContainer {
+  padding: var(--spacing-unit);
+}
+
+.JobCard {
+  height: auto;
+  padding: var(--spacing-unit);
+}
+
+@media (min-width: 768px) {
+  .JobGrid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
