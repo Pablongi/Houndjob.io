@@ -4,8 +4,7 @@ import { FilterState } from '../../types/filter';
 import { Job, Tag } from '../../types/job';
 import { RankedItem } from '../../types/filter';
 import Searcher from './Searcher';
-import FilterPanel from './FilterPanel';
-import ImageSections from './ImageSections';
+import FilterPanel from '../filters/FilterPanel';
 const HotJobs = React.lazy(() => import('./HotJobs')); // Lazy loading aquí
 
 const HomeContainer = styled.div`
@@ -92,13 +91,6 @@ const Home: React.FC<HomeProps> = ({
         allRegions={allRegions}
         topCompanies={topCompanies}
         mode="rows"
-      />
-      <ImageSections
-        filters={filters}
-        onFilter={onFilter}
-        topPortals={allCategories.filter((c) => c.name.includes('Portal')).slice(0, 10)}
-        allRegions={allRegions}
-        jobs={jobs}
       />
       <Suspense fallback={<LoadingSpinner>Loading jobs...</LoadingSpinner>}>
         <HotJobs

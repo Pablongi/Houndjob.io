@@ -1,5 +1,6 @@
+import FilterPanel from '@/components/filters/FilterPanel';
 import { Job, Tag, RankedItem } from '../types/job';
-import { extractRegionFromDescription } from './filterUtils';
+
 
 interface Frequencies {
   tags: Tag[];
@@ -59,7 +60,7 @@ export const computeFrequencies = (jobs: Job[]): Frequencies => {
   jobs
     .filter((job) => job.attributes.portal === 'BNE.cl')
     .forEach((job) => {
-      const region = job.attributes.region || extractRegionFromDescription(job.description, job.attributes.country);
+      const region = job.attributes.region || FilterPanel(job.description, job.attributes.country);
       if (region) {
         regionCounts[region] = (regionCounts[region] || 0) + 1;
       }

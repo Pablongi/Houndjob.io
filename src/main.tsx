@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import './index.css';
 
 console.log('[Main Diagnostic] [STEP 1] Iniciando carga de la aplicación...');
 const rootElement = document.getElementById('root');

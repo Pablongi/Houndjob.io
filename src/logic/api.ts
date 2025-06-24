@@ -1,5 +1,5 @@
 import { Job, JobAttributes, Tag } from '../types/job';
-import { extractTags } from '../utils/tags';
+import { extractTags } from '../logic/tags';
 
 export const JobsService = {
   async fetchJobs(page: number = 1, limit: number = 100): Promise<Job[]> {
@@ -33,7 +33,7 @@ export const JobsService = {
       company: rawJob.attributes.company || '',
       country: rawJob.attributes.country || '',
       portal: rawJob.attributes.portal || '',
-      creation_date: rawJob.attributes.creation_date ? new Date(rawJob.attributes.creation_date * 1000).toISOString() : new Date().toISOString(),
+      creation_date: rawJob.attributes.creation_date || '',
       logo_url: rawJob.attributes.logo_url || '',
       region: rawJob.attributes.region || null,
       jobType: rawJob.attributes.job_type || null,
