@@ -1,6 +1,18 @@
 import { Category } from '@/types/job';
 
-export const portals = ['Get on Board', 'BNE.cl'];
+export const portals = ['Get on Board', 'BNE.cl', 'TrabajoConSentido'];
+
+export const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship'];
+
+export const MODALITIES = ['Presencial', 'Remoto', 'Híbrido'];
+
+export const EXPERIENCE_LEVELS = ['Junior', 'Mid', 'Senior'];
+
+export const portalToLogo: { [key: string]: string } = {
+  'get on board': '/portals/getonboard.png',
+  'bne.cl': '/portals/Portal-BNE_logo.png',
+  'trabajoconsentido': '/portals/Trabajoconsentido_logo.png',
+};
 
 export const TAG_CATEGORIES: Category[] = [
   {
@@ -137,7 +149,7 @@ export const TAG_CATEGORIES: Category[] = [
       { nombre: 'Servicios de Seguridad', tags: ['Guard Services', 'Guardia Seguridad', 'Rondinero'] },
       { nombre: 'Culinaria y Hospitalidad', tags: ['Culinary', 'Pizza Making'] },
       { nombre: 'Automatización RPA', tags: ['UiPath', 'UiPath Studio', 'Orchestrator'] },
-      { nombre: 'Otros', tags: ['Aseo', 'Cleaning', 'Hygiene', 'Diversity', 'Freelance', 'PLC', 'Prevención Riesgos', 'Quality Management', 'QA', 'Regulatory Compliance', 'Safety Regulations', 'SAS', 'Scripting', 'SVM', 'Tailwind CSS', 'Tecnología', 'Trabajo Híbrido', 'Low-Code', 'Power FX', 'VB.NET', 'Core Bancario', 'Gestión de Costos', 'Gestión de Riesgos', 'Migración de Plataformas', 'Servicios OT', 'SAP S/4HANA', 'ABAP', 'Mueblista', 'Formalita'] },
+      { nombre: 'Otros', tags: ['Aseo', 'Cleaning', 'Hygiene', 'Diversity', 'Freelance', 'PLC', 'Prevención Riesgos', 'Quality Management', 'QA', 'Regulatory Compliance', 'Safety Regulations', 'SAS', 'Scripting', 'Tailwind CSS', 'Tecnología', 'Trabajo Híbrido', 'Low-Code', 'Power FX', 'VB.NET', 'Core Bancario', 'Gestión de Costos', 'Gestión de Riesgos', 'Migración de Plataformas', 'Servicios OT', 'SAP S/4HANA', 'ABAP', 'Mueblista', 'Formalita'] },
     ],
   },
   {
@@ -163,3 +175,17 @@ export const TAG_CATEGORIES: Category[] = [
     ],
   },
 ];
+
+export const catToSubs = new Map<string, Set<string>>();
+TAG_CATEGORIES.forEach(category => {
+  const subs = new Set(category.subcategorías.map(sub => sub.nombre));
+  catToSubs.set(category.categoría, subs);
+});
+
+export const subToTags = new Map<string, Set<string>>();
+TAG_CATEGORIES.forEach(category => {
+  category.subcategorías.forEach(sub => {
+    const tags = new Set(sub.tags);
+    subToTags.set(sub.nombre, tags);
+  });
+});

@@ -7,7 +7,9 @@ export interface FilterState {
   selectedCountries: Set<string>;
   selectedRegions: Set<string>;
   company: string;
-  sortMode: 'recommended' | 'latest' | 'salary';
+  selectedJobTitles: Set<string>;
+  selectedModalities: Set<string>;
+  selectedExperiences: Set<string>;
 }
 
 export interface RankedItem {

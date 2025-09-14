@@ -11,6 +11,9 @@ export interface JobAttributes {
   minSalary?: string | null;
   maxSalary?: string | null;
   category?: string | null;
+  modality?: string | null;
+  experience?: string | null;
+  jobTitle?: string;
 }
 
 export interface Tag {
@@ -32,6 +35,7 @@ export interface Job {
   attributes: JobAttributes;
   publicUrl?: string;
   tags: Tag[];
+  portalLink?: string;
 }
 
 export interface Category {

@@ -1,140 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import styled from 'styled-components';
-import { FilterState } from '@/types/filter';
-import { Tag } from '@/types/job';
-import { RankedItem } from '@/types/filter';
 
 const HeaderContainer = styled.header`
-  background: var(--header-bg, #fff);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 15px 20px;
+  background: var(--header-gradient); /* Updated to use gradient */
+  color: var(--text);
+  box-shadow: var(--shadow);
+  padding: 8px 16px;
   position: sticky;
   top: 0;
   z-index: 1000;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 48px; /* Aumentado para mobile-friendliness */
+  @media (max-width: 768px) {
+    height: auto;
+    padding: 8px;
+  }
 `;
 
 const LogoSection = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 `;
 
-const Logo = styled(NavLink)`
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--primary, #007bff);
-  text-decoration: none;
+const LogoImg = styled.img`
+  height: 32px;
+  width: auto;
 `;
 
 const Slogan = styled.span`
   font-size: 14px;
-  color: var(--text, #333);
+  color: var(--text-light);
 `;
 
-const Pagination = styled.div`
+const NavMenu = styled.nav<{ open: boolean }>`
   display: flex;
-  gap: 15px;
+  gap: 16px;
+  @media (max-width: 768px) {
+    display: ${({ open }) => (open ? 'flex' : 'none')};
+    flex-direction: column;
+    position: absolute;
+    top: 48px;
+    left: 0;
+    width: 100%;
+    background: var(--background);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
 `;
 
-const PaginationLink = styled(NavLink)`
-  color: var(--text, #333);
-  text-decoration: none;
-  font-size: 16px;
-  &.active {
-    font-weight: bold;
-    color: var(--primary, #007bff);
-  }
+const NavButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 8px;
   &:hover {
-    color: var(--primary, #007bff);
+    text-decoration: underline;
   }
 `;
 
-const FlagFilter = styled.div`
-  display: flex;
-  gap: 10px;
-`;
-
-const FlagButton = styled.button`
+const Hamburger = styled.button`
+  display: none;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 5px;
-  &:hover {
-    opacity: 0.8;
+  font-size: 20px;
+  color: var(--primary);
+  @media (max-width: 768px) {
+    display: block;
   }
 `;
 
-const FlagImage = styled.img`
-  width: 30px;
-  height: 20px;
-  border-radius: 3px;
-`;
-
 interface HeaderProps {
-  filters: FilterState;
-  onFilter: (newFilters: Partial<FilterState>) => void;
-  allTags: Tag[];
-  allCategories: RankedItem[];
-  allSubcategories: RankedItem[];
-  allRegions: string[];
-  topCompanies: RankedItem[];
+  toggleTheme: () => void;
+  currentTheme: 'light' | 'dark' | 'system';
 }
 
-const Header: React.FC<HeaderProps> = ({ filters, onFilter }) => {
-  const [countries, setCountries] = useState<string[]>([]);
-  const navigate = useNavigate();
-  const flagPaths = {
-    argentina: '/Flags/argentina_flag.png',
-    chile: '/Flags/chile_flag.png',
-    colombia: '/Flags/colombia_flag.png',
-    mexico: '/Flags/mexico_flag.png',
-    peru: '/Flags/peru_flag.png',
-    remote: '/Flags/remote.png',
-  };
-
-  useEffect(() => {
-    setCountries(Object.keys(flagPaths));
-  }, []);
-
-  const handleCountrySelect = (country: string) => {
-    const updatedCountries = new Set(filters.selectedCountries);
-    if (updatedCountries.has(country)) {
-      updatedCountries.delete(country);
-    } else {
-      updatedCountries.add(country);
-    }
-    onFilter({ selectedCountries: updatedCountries });
-  };
+const Header: React.FC<HeaderProps> = ({ toggleTheme, currentTheme }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <HeaderContainer>
+    <HeaderContainer role="banner" aria-label="Encabezado de HoundJob">
       <LogoSection>
-        <Logo to="/">HoundJob</Logo>
-        <Slogan>Encuentra tu próximo trabajo</Slogan>
+        <NavLink to="/">
+          <LogoImg src="/logos/Houndjob_logo.png" alt="Logo de HoundJob" loading="lazy" />
+        </NavLink>
+        <Slogan>Encuentra tu empleo ideal en segundos</Slogan>
       </LogoSection>
-      <Pagination>
-        <PaginationLink to="/" end>
-          Home
-        </PaginationLink>
-        <PaginationLink to="/filters">
-          Filters
-        </PaginationLink>
-      </Pagination>
-      <FlagFilter>
-        {countries.map((country) => (
-          <FlagButton
-            key={country}
-            onClick={() => handleCountrySelect(country)}
-            aria-label={`Filter by ${country}`}
-          >
-            <FlagImage src={flagPaths[country as keyof typeof flagPaths]} alt={`${country} flag`} />
-          </FlagButton>
-        ))}
-      </FlagFilter>
+      <Hamburger onClick={() => setMenuOpen(!menuOpen)} aria-label="Menú móvil">
+        ☰
+      </Hamburger>
+      <NavMenu open={menuOpen} role="navigation" aria-label="Menú principal">
+        <NavButton aria-label="Perfil">Perfil</NavButton>
+        <NavButton aria-label="Favoritos">Favoritos</NavButton>
+      </NavMenu>
     </HeaderContainer>
   );
 };

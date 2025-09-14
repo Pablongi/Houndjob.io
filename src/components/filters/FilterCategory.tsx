@@ -1,190 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
-import Slider from 'react-slick';
-import { FilterState } from '../../types/filter';
-
-// Importar estilos de slick-carousel
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
-
-const CategoryContainer = styled(motion.div)`
-  margin-bottom: 16px;
-  padding: 8px;
-  border-radius: 8px;
-  background: var(--background-secondary, #f8f9fa);
-`;
-
-const CategoryHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const CategoryLabel = styled.h3`
-  font-size: 16px;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 500;
-  color: var(--text, #333);
-`;
-
-const ExpandButton = styled(motion.button)`
-  background: none;
-  border: none;
-  font-size: 14px;
-  color: var(--zhipin-teal);
-  cursor: pointer;
-  &:hover {
-    color: var(--zhipin-teal-dark);
-  }
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 8px;
-  border: 1px solid var(--border, #e8ecef);
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: 'Roboto', sans-serif;
-  color: var(--text, #333);
-  background: var(--background-panel, #fff);
-  &:focus {
-    outline: none;
-    border-color: var(--zhipin-teal);
-    box-shadow: 0 0 0 2px rgba(0, 193, 222, 0.2);
-  }
-`;
-
-const ItemsContainer = styled(motion.div)`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const CarouselContainer = styled.div`
-  margin-top: 8px;
-  .slick-slide {
-    padding: 0 4px;
-  }
-  .slick-prev,
-  .slick-next {
-    background: var(--chip-bg, #e8ecef);
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-    &:before {
-      color: var(--text-light, #666);
-      font-size: 14px;
-    }
-    &:hover {
-      background: #d0d5dd;
-    }
-  }
-  .slick-prev {
-    left: -30px;
-  }
-  .slick-next {
-    right: -30px;
-  }
-`;
-
-interface FilterButtonProps {
-  active: boolean;
-  isTopTag?: boolean;
-}
-
-const FilterButton = styled(motion.button)<FilterButtonProps>`
-  padding: 6px 12px;
-  background: ${({ active }) => (active ? '#00c4b4' : 'var(--chip-bg, #e8ecef)')};
-  color: ${({ active }) => (active ? '#fff' : 'var(--text-light, #666)')};
-  border: 1px solid ${({ active }) => (active ? '#00c4b4' : 'var(--border, #e8ecef)')};
-  border-radius: 16px;
-  font-size: 14px;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 400;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  &:hover {
-    background: ${({ active }) => (active ? '#00a89a' : '#d0d5dd')};
-    color: ${({ active }) => (active ? '#fff' : 'var(--text, #333)')};
-  }
-  &:focus {
-    outline: 2px solid #00c4b4;
-    outline-offset: 2px;
-  }
-`;
-
-const Logo = styled.img`
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  object-fit: cover;
-`;
-
-const Count = styled.span`
-  font-size: 12px;
-  color: var(--text-light, #666);
-`;
-
-const ClearButton = styled(motion.button)`
-  padding: 4px 8px;
-  background: var(--background-panel, #fff);
-  border: 1px solid var(--border, #e8ecef);
-  border-radius: 8px;
-  color: var(--text, #333);
-  font-size: 12px;
-  font-family: 'Roboto', sans-serif;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.3s ease;
-  &:hover {
-    background: #ff4d4f;
-    color: #fff;
-    border-color: #ff4d4f;
-  }
-  &:focus {
-    outline: 2px solid #00c4b4;
-  }
-`;
-
-const EmptyMessage = styled.p`
-  font-size: 14px;
-  color: var(--text-light, #666);
-  font-family: 'Roboto', sans-serif;
-  margin: 8px 0;
-`;
-
-const LoadMoreButton = styled(motion.button)`
-  margin-top: 8px;
-  padding: 6px 12px;
-  background: var(--chip-bg, #e8ecef);
-  border: 1px solid var(--border, #e8ecef);
-  border-radius: 8px;
-  color: var(--text-light, #666);
-  font-size: 14px;
-  font-family: 'Roboto', sans-serif;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  &:hover {
-    background: #d0d5dd;
-    color: var(--text, #333);
-  }
-  &:focus {
-    outline: 2px solid #00c4b4;
-  }
-`;
+import { motion, AnimatePresence } from 'framer-motion';
+import { FilterState } from '@/types/filter';
+import { useAppContext } from './FilterContext';
+import { catToSubs, subToTags } from '@/constants';
 
 interface FilterItem {
   name: string;
@@ -200,10 +19,183 @@ interface FilterCategoryProps {
   selectedItems: string | Set<string>;
   onFilter: (newFilters: Partial<FilterState>) => void;
   allItems: FilterItem[];
-  displayMode: 'rows' | 'tabs';
+  displayMode: 'carousel' | 'tabs' | 'static';
   isSearchable?: boolean;
   isPortal?: boolean;
+  hideTab?: boolean;
 }
+
+const FilterContainer = styled(motion.div)`
+  display: flex;
+  width: 100%;
+  height: 50px;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--background);
+  box-shadow: var(--shadow);
+  align-items: center;
+  overflow: visible;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  @media (max-width: 768px) {
+    height: 45px;
+    padding: 4px;
+  }
+`;
+
+const CarouselContainer = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  scroll-behavior: smooth;
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 2px;
+  }
+`;
+
+const TabContainer = styled.div`
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  padding-left: 4px;
+`;
+
+const CategoryLabel = styled.h3`
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
+`;
+
+const FilterTabButton = styled.button`
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-light);
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover {
+    border-color: var(--primary);
+  }
+  &::after {
+    content: '▼';
+    font-size: 8px;
+  }
+`;
+
+const FilterDropdown = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  background: var(--dropdown-gradient); /* Updated to use gradient */
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 1100;
+  width: max-content;
+  min-width: 220px;
+  max-width: 400px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 6px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text);
+  &:focus {
+    outline: none;
+    border-bottom-color: var(--primary);
+  }
+`;
+
+const ItemsContainer = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+`;
+
+interface FilterButtonProps {
+  active: boolean;
+  isStatic?: boolean;
+}
+
+export const FilterButton = styled(motion.button)<FilterButtonProps>`
+  padding: 4px 8px;
+  background: ${({ active }) => (active ? 'var(--primary)' : 'var(--button-gradient)')}; /* Updated active to solid, inactive to gradient */
+  color: ${({ active }) => (active ? '#fff' : 'var(--text)')};
+  border: none;
+  border-radius: 16px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  &:hover {
+    background: ${({ active }) => (active ? 'var(--primary-dark)' : '#d0f0d0')};
+  }
+`;
+
+const Logo = styled.img`
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+`;
+
+const ClearButton = styled.button`
+  padding: 4px 8px;
+  background: var(--chip-bg);
+  border: none;
+  border-radius: 16px;
+  color: var(--accent-red);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover {
+    background: #ffd0d0;
+  }
+`;
+
+const EmptyMessage = styled.p`
+  font-size: 11px;
+  color: var(--text-light);
+  margin: 6px;
+  text-align: center;
+`;
 
 const FilterCategory: React.FC<FilterCategoryProps> = ({
   category,
@@ -213,95 +205,126 @@ const FilterCategory: React.FC<FilterCategoryProps> = ({
   onFilter,
   allItems,
   displayMode,
-  isSearchable,
-  isPortal,
+  isSearchable = false,
+  isPortal = false,
+  hideTab = false,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(displayMode === 'rows');
+  const { filters, strictMode } = useAppContext();
+  const [isExpanded, setIsExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredItems, setFilteredItems] = useState<FilterItem[]>(items);
-  const [visibleItemsCount, setVisibleItemsCount] = useState(10);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [hoverSide, setHoverSide] = useState<'left' | 'right' | null>(null);
+  const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const sliderSettings = {
-    dots: false,
-    infinite: false,
-    speed: 500,
-    slidesToShow: Math.min(items.length, 5),
-    slidesToScroll: 1,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: Math.min(items.length, 4),
-        },
-      },
-      {
-        breakpoint: 768,
-        settings: {
-          slidesToShow: Math.min(items.length, 3),
-        },
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: Math.min(items.length, 2),
-        },
-      },
-    ],
-    beforeChange: () => setIsDragging(true),
-    afterChange: () => setIsDragging(false),
-  };
+  const filteredItems = useMemo(() => {
+    let filtered = allItems;
+    if (strictMode) {
+      if (category === 'subcategories' && filters.selectedCategories.size > 0) {
+        const allowedSubs = new Set<string>();
+        filters.selectedCategories.forEach((cat: string) => {
+          const subs = catToSubs.get(cat);
+          if (subs) subs.forEach((sub: string) => allowedSubs.add(sub));
+        });
+        filtered = filtered.filter(item => allowedSubs.has(item.name));
+      } else if (category === 'tags') {
+        const allowedTags = new Set<string>();
+        if (filters.selectedSubcategories.size > 0) {
+          filters.selectedSubcategories.forEach((sub: string) => {
+            const tags = subToTags.get(sub);
+            if (tags) tags.forEach((tag: string) => allowedTags.add(tag));
+          });
+        } else if (filters.selectedCategories.size > 0) {
+          filters.selectedCategories.forEach((cat: string) => {
+            const subs = catToSubs.get(cat);
+            if (subs) {
+              subs.forEach((sub: string) => {
+                const tags = subToTags.get(sub);
+                if (tags) tags.forEach((tag: string) => allowedTags.add(tag));
+              });
+            }
+          });
+        }
+        if (allowedTags.size > 0) {
+          filtered = filtered.filter(item => allowedTags.has(item.name));
+        }
+      } else if (category === 'regions' && filters.selectedCountries.size > 0) {
+        filtered = filtered.filter(item => {
+          const country = allItems.find(i => i.name === item.name)?.value;
+          return country ? filters.selectedCountries.has(country) : true;
+        });
+      }
+    }
+    if (searchTerm) {
+      filtered = filtered.filter((item) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [searchTerm, allItems, strictMode, filters.selectedCategories, filters.selectedSubcategories, filters.selectedCountries, category]);
 
   useEffect(() => {
-    if (!isSearchable) {
-      setFilteredItems(items);
-      return;
+    if (hoverSide && containerRef.current) {
+      if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = setInterval(() => {
+        if (containerRef.current) {
+          const scrollAmount = 50;
+          containerRef.current.scrollLeft += hoverSide === 'left' ? -scrollAmount : scrollAmount;
+        }
+      }, 200);
     }
+    return () => {
+      if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
+    };
+  }, [hoverSide]);
 
-    if (!searchTerm) {
-      setFilteredItems(items);
-      return;
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || displayMode !== 'carousel') return;
+    const { left, width } = containerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - left;
+    const threshold = width * 0.1;
+    if (mouseX <= threshold) {
+      setHoverSide('left');
+    } else if (mouseX >= width - threshold) {
+      setHoverSide('right');
+    } else {
+      setHoverSide(null);
     }
+  };
 
-    const filtered = allItems.filter((item) =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredItems(filtered);
-  }, [searchTerm, items, allItems, isSearchable]);
+  const handleMouseLeave = () => {
+    setHoverSide(null);
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setVisibleItemsCount(10);
   };
 
   const handleFilterClick = (item: FilterItem) => {
-    if (isDragging) return;
-
+    let newSelected;
     if (category === 'companies') {
-      const currentCompany = typeof selectedItems === 'string' ? selectedItems : '';
-      const newCompany = currentCompany === item.name ? '' : item.name;
-      onFilter({ company: newCompany });
+      newSelected = typeof selectedItems === 'string' ? (selectedItems === item.name ? '' : item.name) : '';
+      onFilter({ company: newSelected });
     } else {
-      const newSelected = new Set(
-        selectedItems instanceof Set ? selectedItems : new Set([selectedItems])
-      );
+      newSelected = new Set(selectedItems);
       if (newSelected.has(item.name)) {
         newSelected.delete(item.name);
       } else {
         newSelected.add(item.name);
       }
-
       const filterKey =
-        category === 'portals'
-          ? 'selectedPortals'
-          : category === 'categories'
-          ? 'selectedCategories'
-          : category === 'tags'
-          ? 'selectedTags'
-          : 'selectedRegions';
-
-      onFilter({ [filterKey]: newSelected });
+        category === 'portals' ? 'selectedPortals' :
+        category === 'categories' ? 'selectedCategories' :
+        category === 'subcategories' ? 'selectedSubcategories' :
+        category === 'tags' ? 'selectedTags' :
+        category === 'regions' ? 'selectedRegions' :
+        category === 'jobTitles' ? 'selectedJobTitles' :
+        category === 'modalities' ? 'selectedModalities' :
+        category === 'experiences' ? 'selectedExperiences' :
+        category === 'countries' ? 'selectedCountries' : '';
+      if (filterKey) onFilter({ [filterKey]: newSelected });
+    }
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = 0;
     }
   };
 
@@ -310,19 +333,20 @@ const FilterCategory: React.FC<FilterCategoryProps> = ({
       onFilter({ company: '' });
     } else {
       const filterKey =
-        category === 'portals'
-          ? 'selectedPortals'
-          : category === 'categories'
-          ? 'selectedCategories'
-          : category === 'tags'
-          ? 'selectedTags'
-          : 'selectedRegions';
-      onFilter({ [filterKey]: new Set() });
+        category === 'portals' ? 'selectedPortals' :
+        category === 'categories' ? 'selectedCategories' :
+        category === 'subcategories' ? 'selectedSubcategories' :
+        category === 'tags' ? 'selectedTags' :
+        category === 'regions' ? 'selectedRegions' :
+        category === 'jobTitles' ? 'selectedJobTitles' :
+        category === 'modalities' ? 'selectedModalities' :
+        category === 'experiences' ? 'selectedExperiences' :
+        category === 'countries' ? 'selectedCountries' : '';
+      if (filterKey) onFilter({ [filterKey]: new Set() });
     }
-  };
-
-  const loadMore = () => {
-    setVisibleItemsCount((prev) => prev + 10);
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = 0;
+    }
   };
 
   const isSelected = (item: FilterItem) => {
@@ -332,146 +356,115 @@ const FilterCategory: React.FC<FilterCategoryProps> = ({
     return selectedItems instanceof Set && selectedItems.has(item.name);
   };
 
-  const getCount = (item: FilterItem) => {
-    return item.count !== undefined ? ` (${item.count})` : '';
+  const renderItems = () => {
+    const displayItems = items.filter(item => filteredItems.some(f => f.name === item.name));
+    if (displayMode === 'carousel') {
+      const selected = displayItems.filter(item => isSelected(item));
+      const unselected = displayItems.filter(item => !isSelected(item)).sort((a, b) => (b.count || 0) - (a.count || 0));
+      const reorderedItems = [...selected, ...unselected];
+      return (
+        <>
+          {reorderedItems.map((item, idx) => (
+            <FilterButton
+              key={`${item.name}-${idx}`}
+              active={isSelected(item)}
+              onClick={() => handleFilterClick(item)}
+              role="option"
+              aria-selected={isSelected(item)}
+              aria-label={`Seleccionar ${item.name}`}
+            >
+              {item.logo && <Logo src={item.logo} alt={`${item.name} logo`} loading="lazy" />}
+              {item.name} {item.count ? `(${item.count})` : ''}
+            </FilterButton>
+          ))}
+        </>
+      );
+    } else if (displayMode === 'static' || displayMode === 'tabs') {
+      return (
+        <ItemsContainer>
+          {displayItems.map((item, idx) => (
+            <FilterButton
+              key={`${item.name}-${idx}`}
+              active={isSelected(item)}
+              onClick={() => handleFilterClick(item)}
+              role="option"
+              aria-selected={isSelected(item)}
+              aria-label={`Seleccionar ${item.name}`}
+            >
+              {item.logo && <Logo src={item.logo} alt={`${item.name} logo`} loading="lazy" />}
+              {item.name} {item.count ? `(${item.count})` : ''}
+            </FilterButton>
+          ))}
+        </ItemsContainer>
+      );
+    }
+    return null;
   };
-
-  const handleExpand = () => {
-    setIsExpanded((prev) => !prev);
-  };
-
-  const visibleItems = isSearchable
-    ? filteredItems.slice(0, visibleItemsCount)
-    : filteredItems;
-
-  const hasMoreItems = isSearchable && visibleItemsCount < filteredItems.length;
-
-  const isEmpty = filteredItems.length === 0;
 
   return (
-    <CategoryContainer
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      role="group"
-      aria-label={`${label} filter category`}
-    >
-      <CategoryHeader>
+    <FilterContainer key={category}>
+      <CarouselContainer ref={containerRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
         <CategoryLabel>{label}</CategoryLabel>
-        {displayMode === 'tabs' && !isSearchable && (
-          <ExpandButton
-            onClick={handleExpand}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label={isExpanded ? `Collapse ${label}` : `Expand ${label}`}
+        {renderItems()}
+      </CarouselContainer>
+      {!hideTab && (
+        <TabContainer>
+          <FilterTabButton
+            onClick={() => setIsExpanded(!isExpanded)}
+            aria-label={isExpanded ? `Cerrar ${label} dropdown` : `Abrir ${label} dropdown`}
           >
-            {isExpanded ? 'Collapse' : 'Expand'}
-          </ExpandButton>
-        )}
-        {((selectedItems instanceof Set && selectedItems.size > 0) ||
-          (typeof selectedItems === 'string' && selectedItems)) && (
-          <ClearButton
-            onClick={handleClear}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95}}
-            aria-label={`Clear ${label} filters`}
-          >
-            <span>✕</span> Clear
-          </ClearButton>
-        )}
-      </CategoryHeader>
-      {isSearchable && (
-        <SearchInput
-          type="text"
-          placeholder={`Search ${label}...`}
-          value={searchTerm}
-          onChange={handleSearch}
-          aria-label={`Search ${label}`}
-        />
-      )}
-      {isEmpty && <EmptyMessage>No items found.</EmptyMessage>}
-      {!isEmpty && !isExpanded && displayMode === 'tabs' && !isSearchable ? (
-        <CarouselContainer>
-          <Slider {...sliderSettings}>
-            {filteredItems.map((item, idx) => (
-              <FilterButton
-                key={idx}
-                active={isSelected(item)}
-                onClick={() => handleFilterClick(item)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label={`Filter by ${item.name}`}
-                aria-pressed={isSelected(item)}
+            Más
+          </FilterTabButton>
+          <AnimatePresence>
+            {isExpanded && (
+              <FilterDropdown
+                key="dropdown"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                role="listbox"
               >
-                {isPortal && item.logo && (
-                  <Logo src={item.logo} alt={`${item.name} logo`} onError={(e) => (e.currentTarget.style.display = 'none')} />
+                {isSearchable && (
+                  <SearchInput
+                    placeholder="Buscar..."
+                    onChange={handleSearch}
+                    aria-label={`Buscar en ${label}`}
+                  />
                 )}
-                {item.name}
-                {getCount(item)}
-              </FilterButton>
-            ))}
-          </Slider>
-        </CarouselContainer>
-      ) : (
-        !isEmpty && (
-          <ItemsContainer>
-            {visibleItems.map((item, idx) => {
-              const key = `${item.name}-${item.count || idx}`;
-              const isActive = isSelected(item);
-              const itemLabel = `${item.name}${getCount(item)}`;
-              const normalizedLabel = itemLabel.toLowerCase();
-              const normalizedCount = parseInt(normalizedLabel.match(/\d+/)?.[0] || '0', 10);
-              const normalizedName = normalizedLabel.replace(/\s*\(\d+\)\s*$/, '');
-              const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
-              const matchesSearch =
-                searchWords.length === 0 ||
-                searchWords.every(
-                  (word) =>
-                    normalizedName.includes(word) || normalizedCount.toString().includes(word)
-                );
-
-              const score =
-                searchWords.reduce((acc, word) => {
-                  const nameScore = normalizedName.includes(word) ? word.length * 2 : 0;
-                  const countScore = normalizedCount.toString().includes(word) ? word.length : 0;
-                  return acc + nameScore + countScore;
-                }, 0) + (isActive ? 100 : 0);
-
-              if (!matchesSearch) return null;
-
-              return (
-                <FilterButton
-                  key={key}
-                  active={isActive}
-                  onClick={() => handleFilterClick(item)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{ order: -score }}
-                  aria-label={`Filter by ${item.name}`}
-                  aria-pressed={isActive}
-                >
-                  {isPortal && item.logo && (
-                    <Logo src={item.logo} alt={`${item.name} logo`} onError={(e) => (e.currentTarget.style.display = 'none')} />
-                  )}
-                  {item.name}
-                  {item.count !== undefined && <Count>({item.count})</Count>}
-                </FilterButton>
-              );
-            })}
-          </ItemsContainer>
-        )
+                <ItemsContainer>
+                  {filteredItems.map((item, index) => {
+                    const active = isSelected(item);
+                    return (
+                      <FilterButton
+                        key={index}
+                        active={active}
+                        onClick={() => handleFilterClick(item)}
+                        role="option"
+                        aria-selected={active}
+                        aria-label={`Seleccionar ${item.name}`}
+                      >
+                        {item.logo && <Logo src={item.logo} alt={`${item.name} logo`} loading="lazy" />}
+                        {item.name} {item.count ? `(${item.count})` : ''}
+                      </FilterButton>
+                    );
+                  })}
+                </ItemsContainer>
+                {filteredItems.length === 0 && <EmptyMessage>No items encontrados.</EmptyMessage>}
+              </FilterDropdown>
+            )}
+          </AnimatePresence>
+        </TabContainer>
       )}
-      {hasMoreItems && (
-        <LoadMoreButton
-          onClick={loadMore}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          aria-label={`Load more ${label} items`}
+      {((selectedItems instanceof Set && selectedItems.size > 0) || (typeof selectedItems === 'string' && selectedItems)) && (
+        <ClearButton
+          onClick={handleClear}
+          aria-label={`Limpiar filtros de ${label}`}
         >
-          Load More
-        </LoadMoreButton>
+          Limpiar
+        </ClearButton>
       )}
-    </CategoryContainer>
+    </FilterContainer>
   );
 };
 

@@ -9,22 +9,21 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
+    "baseUrl": "src",
     "paths": {
-      "@/*": ["src/*"],
-      "components/*": ["src/components/*"],
-      "types/*": ["src/types/*"],
-      "logic/*": ["src/logic/*"],
-      "utils/*": ["src/utils/*"]
-    },
-    "composite": true
+      "@/*": ["*"],
+      "components/*": ["components/*"],
+      "types/*": ["types/*"],
+      "logic/*": ["logic/*"],
+      "utils/*": ["utils/*"]
+    }
   },
-  "include": ["src/**/*", "*.config.*"],
+  "include": ["src/**/*", "*.config.*", "public/utils", "src/types/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

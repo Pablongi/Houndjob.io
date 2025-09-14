@@ -1,35 +1,43 @@
-:root {
-  --zhipin-teal: #00c1de;
-  --zhipin-teal-dark: #00a1be;
-  --zhipin-gray: #f5f5f5;
-  --background: #f5f5f5;
-  --background-panel: #ffffff;
-  --background-secondary: #f8f9fa;
-  --chip-bg: #e8ecef;
-  --input-bg: #f5f5f5;
-  --text: #333;
-  --text-light: #666;
-  --border: #e8ecef;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  --button-padding: 6px 12px;
-  --font-size-base: 14px;
-  --font-size-small: 12px;
-  --spacing-unit: 10px;
+:root[data-theme="light"] {
+  --primary: #09BB07; /* Green primary como Zhipin para botones/acentos */
+  --primary-dark: #07A005; /* Darker green para hovers */
+  --secondary-green: #00C853; /* Secondary green para salary/success */
+  --background: #FFFFFF; /* White main bg */
+  --background-panel: #FFFFFF; /* Panels white */
+  --background-secondary: #E6F7FF; /* Light teal para fondos secundarios como headers/filtros */
+  --chip-bg: #E8F5E9; /* Light green para chips/tags */
+  --text: #333333; /* Dark gray text */
+  --text-light: #666666; /* Light gray secondary text */
+  --border: #E0E0E0; /* Softer gray borders */
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.05); /* Subtle shadows */
+  --card-hover-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Hover depth */
+  --accent-red: #FF4D4F; /* Red for errors/clear */
+  --header-gradient: linear-gradient(to right, #ffffff, #f6fff6); /* Subtle gradient for headers matching Zhipin style */
+  --footer-gradient: linear-gradient(to right, #f6fff6, #ffffff); /* Subtle gradient for footers */
+  --dropdown-gradient: linear-gradient(to bottom, #ffffff, #f0fff0); /* Subtle gradient for dropdowns */
+  --button-gradient: linear-gradient(to right, #e8f5e9, #c8e6c9); /* Gradient for inactive buttons */
+  --card-gradient: linear-gradient(to bottom, #ffffff, #f9fff9); /* Subtle gradient for cards */
 }
 
-[data-theme="dark"] {
-  --zhipin-teal: #00c1de;
-  --zhipin-teal-dark: #00a1be;
-  --zhipin-gray: #1e1e1e;
-  --background: #1e1e1e;
-  --background-panel: #2a2a2a;
-  --background-secondary: #333333;
-  --chip-bg: #3a3a3a;
-  --input-bg: #333333;
-  --text: #e0e0e0;
-  --text-light: #a0a0a0;
-  --border: #444444;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+:root[data-theme="dark"] {
+  --primary: #09BB07; /* Mantener green primary */
+  --primary-dark: #07A005;
+  --secondary-green: #00C853;
+  --background: #121212; /* Dark bg */
+  --background-panel: #1E1E1E; /* Panels dark */
+  --background-secondary: #1E1E1E; /* Darker teal-like */
+  --chip-bg: #333333; /* Dark chips */
+  --text: #E0E0E0; /* Light text */
+  --text-light: #A0A0A0;
+  --border: #333333;
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  --card-hover-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --accent-red: #FF4D4F;
+  --header-gradient: linear-gradient(to right, #1e1e1e, #282828); /* Subtle dark gradient for headers */
+  --footer-gradient: linear-gradient(to right, #282828, #1e1e1e); /* Subtle dark gradient for footers */
+  --dropdown-gradient: linear-gradient(to bottom, #1e1e1e, #282828); /* Subtle dark gradient for dropdowns */
+  --button-gradient: linear-gradient(to right, #333333, #444444); /* Gradient for inactive buttons in dark mode */
+  --card-gradient: linear-gradient(to bottom, #1e1e1e, #282828); /* Subtle dark gradient for cards */
 }
 
 body {
@@ -37,7 +45,16 @@ body {
   padding: 0;
   background-color: var(--background);
   color: var(--text);
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif; /* Tipografía como Zhipin: sans-serif moderna */
+  font-size: 14px; /* Base size para body como en Zhipin */
+  overflow-x: hidden; /* Evita scroll horizontal en toda la página */
+  width: 100vw; /* Asegura que el body ocupe el 100% del viewport */
+  box-sizing: border-box; /* Incluye padding y padding en el cálculo del ancho */
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
 }
 
 @keyframes fadeIn {
@@ -45,32 +62,31 @@ body {
   to { opacity: 1; }
 }
 
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  font-size: 16px;
 }
 
-/* Mobile-first approach */
-.JobGrid {
-  grid-template-columns: 1fr;
+.suggestions-container {
+  position: absolute;
+  background: var(--background-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  z-index: 1000;
+  width: 100%;
 }
 
-.FilterPanelContainer {
-  padding: var(--spacing-unit);
+.suggestion {
+  padding: 8px 16px;
+  cursor: pointer;
 }
 
-.SearchContainer {
-  padding: var(--spacing-unit);
-}
-
-.JobCard {
-  height: auto;
-  padding: var(--spacing-unit);
-}
-
-@media (min-width: 768px) {
-  .JobGrid {
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  }
+.suggestion-highlighted {
+  background: var(--chip-bg);
 }

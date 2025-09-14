@@ -1,89 +1,163 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
-import Home from '@/components/home/Home';
-import FilterPanel from '@/components/filters/FilterPanel';
-import JobDetails from '@/components/jobs/JobDetails';
-import Diagnostics from '@/components/diagnostics/Diagnostics';
-import { JobsService } from '@/logic/api';
-import { FilterState, RankedItem } from '@/types/filter';
-import { Job, Tag } from '@/types/job';
-import { computeFrequencies } from '@/utils/frequencies';
-import { filterJobs } from '@/logic/filterUtils';
-import './App.css';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
+import { AppProvider, useAppContext } from '@/components/filters/FilterContext';
+import JobList from '@/components/jobs/JobList';
+import SearchBar from '@/components/filters/SearchBar';
+import FiltersPanel from '@/components/filters/FiltersPanel';
+import { useJobsWithCache as useJobs } from '@/hooks/useJobsWithCache';
+import SelectedFilters from '@/components/filters/SelectedFilters';
+import { FilterState } from '@/types/filter';
 
 const AppContainer = styled.div`
   min-height: 100vh;
-  background: var(--background, #f5f5f5);
-  font-family: 'Poppins', sans-serif;
-`;
-
-const LoadingContainer = styled.div`
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  font-size: 18px;
-  color: var(--text, #333);
+  flex-direction: column;
+  background: var(--background-secondary);
+  width: 100%;
+  box-sizing: border-box;
 `;
 
-const App: React.FC = () => {
-  console.log('App component mounted');
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [allTags, setAllTags] = useState<Tag[]>([]);
-  const [allCategories, setAllCategories] = useState<RankedItem[]>([]);
-  const [allSubcategories, setAllSubcategories] = useState<RankedItem[]>([]);
-  const [allRegions, setAllRegions] = useState<string[]>([]);
-  const [topCompanies, setTopCompanies] = useState<RankedItem[]>([]);
-  const [filters, setFilters] = useState<FilterState>({
-    search: '',
-    selectedCategories: new Set(),
-    selectedSubcategories: new Set(),
-    selectedTags: new Set(),
-    selectedPortals: new Set(),
-    selectedCountries: new Set(),
-    selectedRegions: new Set(),
-    company: '',
-    sortMode: 'latest',
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [diagnosticResults, setDiagnosticResults] = useState<{ name: string; passed: boolean }[]>([]);
-  const jobsPerPage = 60;
+const MainContent = styled.main`
+  flex: 1;
+  padding: 0;
+  max-width: 100%;
+  overflow: visible;
+  @media (max-width: 768px) {
+    padding: 0;
+  }
+`;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const fetchedJobs = await JobsService.fetchJobs(1, 100);
-        setJobs(fetchedJobs);
-        const frequencies = computeFrequencies(fetchedJobs);
-        setAllTags(frequencies.tags);
-        setAllCategories(frequencies.categories);
-        setAllSubcategories(frequencies.subcategories);
-        setAllRegions(frequencies.regions);
-        setTopCompanies(frequencies.companies);
-      } catch (err: any) {
-        setError(`Error al cargar datos: ${err.message || 'Desconocido'}`);
-      } finally {
-        setLoading(false);
-      }
+const LayoutWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+`;
+
+const SearchBox = styled.div`
+  background: var(--background);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  width: 50vw;
+  margin: 16px auto 0 auto;
+  @media (max-width: 768px) {
+    width: 100vw;
+    padding: 8px;
+  }
+  @media (max-width: 1024px) {
+    width: 70vw;
+  }
+`;
+
+const FiltersBox = styled.div<{ $minimized: boolean }>`
+  background: var(--background);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  width: 70vw;
+  max-width: 70vw;
+  margin: 0 auto;
+  height: ${({ $minimized }) => ($minimized ? 'auto' : 'fit-content')};
+  overflow: visible;
+  transition: height 0.3s ease, opacity 0.3s ease;
+  opacity: ${({ $minimized }) => ($minimized ? 0.5 : 1)};
+  @media (max-width: 768px) {
+    width: 100vw;
+    max-width: 100vw;
+    padding: 8px;
+  }
+  @media (max-width: 1024px) {
+    width: 70vw;
+    max-width: 70vw;
+  }
+`;
+
+const JobsBox = styled.div`
+  background: var(--background);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  width: 90vw;
+  max-width: 90vw;
+  margin: 0 auto;
+  overflow: visible;
+  @media (max-width: 768px) {
+    padding: 8px;
+    width: 100vw;
+    max-width: 100vw;
+  }
+  @media (max-width: 1024px) {
+    width: 90vw;
+    max-width: 90vw;
+  }
+`;
+
+const FloatingBar = styled.div`
+  position: sticky;
+  top: 60px;
+  background: var(--background);
+  padding: 8px;
+  z-index: 10;
+  box-shadow: var(--shadow);
+  width: 70vw;
+  margin: 0 auto;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ClearAllButton = styled.button`
+  background: var(--chip-bg);
+  border: none;
+  border-radius: 16px;
+  color: var(--accent-red);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 8px;
+  &:hover {
+    background: #ffd0d0;
+  }
+`;
+
+const AppContent: React.FC = () => {
+  const { jobs, loadMoreJobs, hasMore, loading, error, refetch } = useJobs();
+  const { filters, setFilters } = useAppContext();
+  const [isFiltersMinimized, setIsFiltersMinimized] = React.useState(false);
+  const [theme, setTheme] = React.useState<'light' | 'dark' | 'system'>(
+    (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system'
+  );
+
+  React.useEffect(() => {
+    localStorage.setItem('theme', theme);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      applyTheme(theme);
     };
-    fetchData();
-  }, []);
+    mediaQuery.addEventListener('change', handleChange);
+    applyTheme(theme);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]);
 
-  const topTags = allTags.slice(0, 10).map((tag) => tag.tag);
-  const filteredJobs = filterJobs(jobs, filters).slice(0, currentPage * jobsPerPage);
-  const hasMore = filteredJobs.length < filterJobs(jobs, filters).length;
+  const applyTheme = (theme: 'light' | 'dark' | 'system') => {
+    let effectiveTheme: 'light' | 'dark' = 'light';
+    if (theme === 'system') {
+      effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } else {
+      effectiveTheme = theme;
+    }
+    document.documentElement.setAttribute('data-theme', effectiveTheme);
+  };
 
-  const handleFilter = (newFilters: Partial<FilterState>) => {
-    setFilters((prev: FilterState) => ({ ...prev, ...newFilters }));
-    setCurrentPage(1);
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : prev === 'dark' ? 'system' : 'light'));
   };
 
   const resetFilters = () => {
@@ -96,85 +170,52 @@ const App: React.FC = () => {
       selectedCountries: new Set(),
       selectedRegions: new Set(),
       company: '',
-      sortMode: 'latest',
+      selectedJobTitles: new Set(),
+      selectedModalities: new Set(),
+      selectedExperiences: new Set(),
     });
-    setCurrentPage(1);
+    refetch();
   };
 
-  const loadMoreJobs = () => {
-    setCurrentPage((prev) => prev + 1);
+  const handleFilter = (newFilters: Partial<FilterState>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+    refetch();
   };
-
-  if (loading) return <LoadingContainer>Cargando empleos...</LoadingContainer>;
-  if (error) return <LoadingContainer>{error}</LoadingContainer>;
 
   return (
     <AppContainer>
-      <Header
-        filters={filters}
-        onFilter={handleFilter}
-        allTags={allTags}
-        allCategories={allCategories}
-        allSubcategories={allSubcategories}
-        allRegions={allRegions}
-        topCompanies={topCompanies}
-      />
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Home
-              filters={filters}
-              onFilter={handleFilter}
-              onReset={resetFilters}
-              allTags={allTags}
-              allCategories={allCategories}
-              allSubcategories={allSubcategories}
-              allRegions={allRegions}
-              topCompanies={topCompanies}
-              jobs={filteredJobs}
-              topTags={topTags}
-              loadMoreJobs={loadMoreJobs}
-              hasMore={hasMore}
-            />
-          }
-        />
-        <Route
-          path="/filters"
-          element={
-            <FilterPanel
-              filters={filters}
-              onFilter={handleFilter}
-              onReset={resetFilters}
-              allTags={allTags}
-              allCategories={allCategories}
-              allSubcategories={allSubcategories}
-              allRegions={allRegions}
-              topCompanies={topCompanies}
-              mode="tabs"
-              jobs={filteredJobs}
-              topTags={topTags}
-              loadMoreJobs={loadMoreJobs}
-              hasMore={hasMore}
-            />
-          }
-        />
-        <Route path="/job/:id" element={<JobDetails jobs={jobs} />} />
-      </Routes>
+      <Header toggleTheme={toggleTheme} currentTheme={theme} />
+      <MainContent>
+        <LayoutWrapper>
+          <SearchBox>
+            <SearchBar allJobs={jobs} />
+          </SearchBox>
+          <FiltersBox $minimized={isFiltersMinimized}>
+            <FiltersPanel allJobs={jobs} onMinimize={(min) => setIsFiltersMinimized(min)} isMinimized={isFiltersMinimized} />
+          </FiltersBox>
+          {isFiltersMinimized && (
+            <FloatingBar>
+              <SelectedFilters filters={filters} onFilter={handleFilter} />
+              <ClearAllButton onClick={resetFilters}>Limpiar todos</ClearAllButton>
+            </FloatingBar>
+          )}
+          <JobsBox>
+            <Routes>
+              <Route path="/" element={<JobList jobs={jobs} loadMoreJobs={loadMoreJobs} hasMore={hasMore} loading={loading} error={error} />} />
+            </Routes>
+          </JobsBox>
+        </LayoutWrapper>
+      </MainContent>
       <Footer />
-      <Diagnostics onComplete={(results: { name: string; passed: boolean }[]) => setDiagnosticResults(results)} />
-      <div>¡Prueba de carga!</div>
-      {diagnosticResults.length > 0 && (
-        <div style={{ position: 'fixed', bottom: '50px', left: '10px', background: '#fff', padding: '10px', border: '1px solid #000' }}>
-          <h3>Resultados de Diagnóstico</h3>
-          <ul>
-            {diagnosticResults.map((result, idx) => (
-              <li key={idx}>{result.name}: {result.passed ? 'Pasó' : 'Falló'}</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </AppContainer>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 };
 
