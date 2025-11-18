@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+empleos.json
+
+# Node
+node_modules/
+dist/
+.env
