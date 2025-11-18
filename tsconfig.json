@@ -21,7 +21,8 @@
       "components/*": ["components/*"],
       "types/*": ["types/*"],
       "logic/*": ["logic/*"],
-      "utils/*": ["utils/*"]
+      "utils/*": ["utils/*"],
+      "hooks/*": ["hooks/*"] 
     }
   },
   "include": ["src/**/*", "*.config.*", "public/utils", "src/types/**/*"],

@@ -1,9 +1,7 @@
-
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FilterState } from '@/types/filter';
-import { normalizeText } from '@/logic/filterUtils';
 
 const SelectedContainer = styled.div`
   display: flex;
@@ -48,14 +46,13 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({ filters, onFilter }) 
   filters.selectedJobTitles.forEach((j) => selected.push({ type: 'jobTitle', value: j }));
   filters.selectedModalities.forEach((m) => selected.push({ type: 'modality', value: m }));
   filters.selectedExperiences.forEach((e) => selected.push({ type: 'experience', value: e }));
-  filters.selectedCountries.forEach((c) => selected.push({ type: 'country', value: c }));
 
   const removeSelected = (type: string, value: string) => {
     const newFilters: Partial<FilterState> = {};
     if (type === 'company') {
       newFilters.company = '';
     } else {
-      const setKey =
+      const filterKey = 
         type === 'portal' ? 'selectedPortals' :
         type === 'category' ? 'selectedCategories' :
         type === 'subcategory' ? 'selectedSubcategories' :
@@ -63,12 +60,11 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({ filters, onFilter }) 
         type === 'region' ? 'selectedRegions' :
         type === 'jobTitle' ? 'selectedJobTitles' :
         type === 'modality' ? 'selectedModalities' :
-        type === 'experience' ? 'selectedExperiences' :
-        type === 'country' ? 'selectedCountries' : '';
-      if (setKey) {
-        const currentSet = new Set(filters[setKey as keyof FilterState] as Set<string>);
+        type === 'experience' ? 'selectedExperiences' : '';
+      if (filterKey) {
+        const currentSet = new Set(filters[filterKey as keyof FilterState] as Set<string>);
         currentSet.delete(value);
-        newFilters[setKey] = currentSet;
+        newFilters[filterKey] = currentSet;
       }
     }
     onFilter(newFilters);
@@ -77,9 +73,14 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({ filters, onFilter }) 
   return (
     <SelectedContainer>
       {selected.map((s, idx) => (
-        <Chip key={idx}>
+        <Chip key={idx} role="button" aria-label={`Filtro seleccionado: ${s.value}`}>
           {s.value}
-          <RemoveButton onClick={() => removeSelected(s.type, s.value)}>×</RemoveButton>
+          <RemoveButton
+            onClick={() => removeSelected(s.type, s.value)}
+            aria-label={`Eliminar filtro ${s.value}`}
+          >
+            ×
+          </RemoveButton>
         </Chip>
       ))}
     </SelectedContainer>
