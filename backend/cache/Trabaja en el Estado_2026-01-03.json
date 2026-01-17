@@ -1,0 +1,22 @@
+{
+    "offers": [
+        {
+            "title": "Sin título",
+            "company": "Sin empresa",
+            "region": "Sin región",
+            "city": "Sin ciudad",
+            "comuna": "Sin comuna",
+            "country": "Chile",
+            "description": "Sin descripción",
+            "experience": "Sin experiencia",
+            "salary": "Sin salario",
+            "date_posted": "",
+            "time_since_posted": "Sin tiempo",
+            "link": "Sin enlace",
+            "company_logo": "Sin logo",
+            "portal_logo": "Sin logo",
+            "source": "Trabaja en el Estado"
+        }
+    ],
+    "timestamp": "2026-01-03T23:19:07.808784"
+}

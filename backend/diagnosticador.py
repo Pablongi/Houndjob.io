@@ -8,11 +8,17 @@ from utils import portals, logger, get_proxy, get_user_agent, VALID_PROXIES, cre
 def load_scrape_results(file='empleos.json'):
     try:
         with open(file, 'r', encoding='utf-8') as f:
-            all_jobs = json.load(f)
+            data = f.read().strip()
+            if not data:
+                return [], [], [p['name'] for p in portals if p.get('active', True)]
+            all_jobs = json.loads(data)
         scraped_portals = list(all_jobs.keys())
         failed_portals = [p['name'] for p in portals if p.get('active', True) and (p['name'] not in scraped_portals or len(all_jobs[p['name']]) == 0)]
         success_portals = [p['name'] for p in portals if p.get('active', True) and p['name'] in scraped_portals and len(all_jobs[p['name']]) > 0]
         return scraped_portals, success_portals, failed_portals
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON error in {file}: {str(e)} - Treating as no data.")
+        return [], [], [p['name'] for p in portals if p.get('active', True)]
     except FileNotFoundError:
         logger.warning(f"{file} not found - assuming all active portals failed.")
         return [], [], [p['name'] for p in portals if p.get('active', True)]

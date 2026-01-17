@@ -1,0 +1,51 @@
+{
+  "name": "hound-project",
+  "version": "6.2.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-query": "^5.0.0",
+    "framer-motion": "^12.16.0",
+    "react": "^18.3.1",
+    "react-autosuggest": "^10.1.0",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.1",
+    "react-slick": "^0.30.3",
+    "react-virtualized": "^9.22.3",
+    "react-window": "^1.8.11",
+    "react-window-infinite-loader": "^1.0.10",
+    "slick-carousel": "^1.8.1",
+    "styled-components": "^6.1.19",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "@types/node": "^22.15.32",
+    "@types/react": "^18.3.23",
+    "@types/react-autosuggest": "^10.1.11",
+    "@types/react-dom": "^18.3.7",
+    "@types/react-slick": "^0.23.13",
+    "@types/react-virtualized": "^9.22.2",
+    "@types/react-window": "^1.8.8",
+    "@types/react-window-infinite-loader": "^1.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.37.5",
+    "prettier": "^2.0.0",
+    "rimraf": "^6.0.1",
+    "vite": "^5.4.8"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean:ts": "rimraf .tsbuildinfo",
+    "clean:deps": "rimraf node_modules package-lock.json && npm install"
+  }
+}

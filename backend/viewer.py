@@ -3,7 +3,11 @@ import json
 def show_jobs():
     try:
         with open('empleos.json', 'r', encoding='utf-8') as f:
-            all_jobs = json.load(f)
+            data = f.read().strip()
+            if not data:
+                print("❌ No data in empleos.json")
+                return
+            all_jobs = json.loads(data)
         
         total = sum(len(jobs) for jobs in all_jobs.values())
         print(f"\n📋 {total} EMPLEOS ENCONTRADOS:")

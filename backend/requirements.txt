@@ -1,0 +1,20 @@
+# Básicas (ya)
+aiohttp
+beautifulsoup4
+requests
+dateparser
+python-dateutil
+python-dotenv
+supabase
+nest_asyncio
+2captcha-python
+playwright
+
+# ML (agrega)
+transformers
+scikit-learn
+pandas
+sentence-transformers
+datasets
+spacy
+google-cloud-aiplatform  # Vertex optional
