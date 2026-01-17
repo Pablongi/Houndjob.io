@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+backend/.env
+
+# Node
+node_modules/
+.DS_Store
+*.log
+
+# Data/ML
+*.csv
+backend/cache/
+backend/homologated_jobs_advanced.csv
+backend/jobs_data.csv
