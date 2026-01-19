@@ -1,14 +1,8 @@
-import schedule
-import time
+from flask import Request
 from ml_prep import prepare_data
 from ml_homologate import advanced_homologate
 
-def job():
+def retrain(request: Request):
     prepare_data()
     advanced_homologate()
-
-schedule.every().monday.at("00:00").do(job)  # Weekly lunes 00:00
-
-while True:
-    schedule.run_pending()
-    time.sleep(60)  # Check minutely
+    return "Retraining done!", 200

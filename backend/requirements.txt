@@ -1,4 +1,4 @@
-# Básicas (ya)
+# Básicas
 aiohttp
 beautifulsoup4
 requests
@@ -10,15 +10,18 @@ nest_asyncio
 2captcha-python
 playwright
 
-# ML (agrega)
+# ML
 transformers
 scikit-learn
 pandas
 sentence-transformers
 datasets
 spacy
-google-cloud-aiplatform  # Vertex optional
+google-cloud-aiplatform
 
-# Web/Prod (agregado)
-flask==2.3.3  # Para web wrapper
-gunicorn==20.1.0  # Server para production
+# Web/Prod
+flask==2.3.3
+gunicorn==20.1.0
+
+# GCP optim
+google-cloud-functions

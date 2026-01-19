@@ -1,35 +1,20 @@
-import json
+from db import get_jobs
 
 def show_jobs():
     try:
-        with open('empleos.json', 'r', encoding='utf-8') as f:
-            data = f.read().strip()
-            if not data:
-                print("❌ No data in empleos.json")
-                return
-            all_jobs = json.loads(data)
-        
-        total = sum(len(jobs) for jobs in all_jobs.values())
-        print(f"\n📋 {total} EMPLEOS ENCONTRADOS:")
+        jobs = get_jobs(limit=100)
+        total = len(jobs)
+        print(f"\n📋 {total} JOBS EN SUPABASE:")
         print("=" * 80)
         
-        for name, jobs in all_jobs.items():
-            print(f"\n🔹 PORTAL: {name} ({len(jobs)} jobs)")
-            for i, job in enumerate(jobs, 1):
-                print(f"  {i}. {job['title']} | {job['company']} | {job['region']} | {job['city']} | {job['comuna']} | Salario: {job['salary']} | Fecha: {job['date_posted']}")
-                desc_snippet = job['description'][:100] + "..." if len(job['description']) > 100 else job['description']
-                print(f"     Descripción: {desc_snippet}")
-                print(f"     🔗 {job['link']}")
-                print()
-        
-    except FileNotFoundError:
-        print("❌ Corre scraper.py primero para generar empleos.json")
-    except UnicodeDecodeError as e:
-        print(f"❌ Error de encoding: {e}. Borra empleos.json y re-corre scraper.py.")
-    except json.JSONDecodeError as e:
-        print(f"❌ Error en JSON: {e}. Borra el archivo y re-scrape.")
+        for i, job in enumerate(jobs, 1):
+            print(f"{i}. {job['title']} | {job['company']} | {job['region']} | {job['city']} | {job['comuna']} | Salario: {job['salary']} | Fecha: {job['scraped_at']}")
+            desc_snippet = job['description'][:100] + "..." if len(job['description']) > 100 else job['description']
+            print(f"     Descripción: {desc_snippet}")
+            print(f"     🔗 {job['link']}")
+            print()
     except Exception as e:
-        print(f"❌ Error inesperado: {e}.")
+        print(f"❌ Error: {e}.")
 
 if __name__ == "__main__":
     show_jobs()

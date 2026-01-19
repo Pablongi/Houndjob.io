@@ -1,73 +1,46 @@
 import asyncio
-import time
-import nest_asyncio
-nest_asyncio.apply()
-from utils import portals, logger, load_cache, save_cache, async_scrape_requests, scrape_with_playwright, validate_offer, get_proxy
+from utils import portals, logger, load_cache, validate_proxy
 from aiohttp import ClientSession
-import requests
-from bs4 import BeautifulSoup
 
-def test_portal_simple(portal):
+async def test_portal(portal, session):
     name = portal['name']
+    cache = load_cache(name)
+    if cache:
+        return {"success": True, "message": "Cache OK"}
+
     url = portal['url']
     selector = portal.get('selector')
     extract_func = portal.get('extract_func')
     
-    cache = load_cache(name)
-    if cache:
-        valid_offers = [o for o in cache if validate_offer(o)]
-        if valid_offers:
-            return {"success": True, "message": "Cache hit con ofertas válidas", "time_taken": 0.0}
-    
     start_time = time.time()
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
-    }
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"}
+    proxy = get_proxy() if validate_proxy(get_proxy()) else None
     
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        async with session.get(url, headers=headers, proxy=proxy, timeout=10) as response:
+            if response.status != 200:
+                return {"success": False, "message": f"HTTP {response.status}"}
+            text = await response.text()
+            soup = BeautifulSoup(text, 'html.parser')
+            offers = soup.select(selector) if selector else []
+        job_offers = [extract_func(o, url) for o in offers[:3]] if offers else []
+        valid = [j for j in job_offers if validate_offer(j)]
         time_taken = time.time() - start_time
-        
-        if response.status_code != 200:
-            return {"success": False, "message": f"HTTP {response.status_code}", "time_taken": time_taken}
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        offers = soup.select(selector) if selector else []
-        
-        if offers:
-            # Prueba el primero
-            job = extract_func(offers[0], url)
-            if validate_offer(job):
-                return {"success": True, "message": f"¡{len(offers)} ofertas encontradas!", "time_taken": time_taken}
-        
-        return {"success": False, "message": "No se encontraron ofertas", "time_taken": time_taken}
-        
+        return {"success": bool(valid), "message": f"{len(valid)} válidas / {len(job_offers)}", "time_taken": time_taken}
     except Exception as e:
-        time_taken = time.time() - start_time
-        return {"success": False, "message": str(e), "time_taken": time_taken}
+        return {"success": False, "message": str(e), "time_taken": time.time() - start_time}
 
-def run_tester_simple():
-    print("🔍 TESTING 4 PORTALES (SOLO REQUESTS - SIN PLAYWRIGHT)")
+async def run_tester():
+    print("🔍 TESTING PORTALES")
     print("=" * 60)
     
-    for portal in portals:
-        if not portal.get('active', True):
-            continue
-            
-        print(f"\n🚀 Probando: {portal['name']}")
-        result = test_portal_simple(portal)
-        status = "✅ Sirve" if result['success'] else "❌ No sirve"
-        time_taken = result['time_taken']
-        
-        print(f"   {status} | {time_taken:.1f}s")
-        print(f"   Mensaje: {result['message']}")
-        
-        if result['success']:
-            logger.info(f"✅ {portal['name']}: OK")
-        else:
-            logger.warning(f"❌ {portal['name']}: {result['message']}")
+    async with ClientSession() as session:
+        tasks = [test_portal(p, session) for p in portals if p.get('active', True)]
+        results = await asyncio.gather(*tasks)
     
-    print("\n🎉 ¡TEST COMPLETO!")
+    for portal, result in zip(portals, results):
+        status = "✅" if result['success'] else "❌"
+        print(f"{portal['name']}: {status} | {result['time_taken']:.1f}s | {result['message']}")
 
 if __name__ == "__main__":
-    run_tester_simple()
+    asyncio.run(run_tester())
