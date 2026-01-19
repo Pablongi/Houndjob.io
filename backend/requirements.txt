@@ -18,3 +18,7 @@ sentence-transformers
 datasets
 spacy
 google-cloud-aiplatform  # Vertex optional
+
+# Web/Prod (agregado)
+flask==2.3.3  # Para web wrapper
+gunicorn==20.1.0  # Server para production
