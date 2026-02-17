@@ -12,4 +12,4 @@ playwright
 
 # Web/Prod
 flask==2.3.3
-gunicorn==20.1.0s
+gunicorn==20.1.0
