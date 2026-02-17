@@ -1,4 +1,4 @@
-import { Tag } from '@/types/job';
+import { Category, Tag } from '@/types/job';
 import { TAG_CATEGORIES } from '@/constants';
 import { normalizeText } from '@/logic/filterUtils';
 

@@ -4,7 +4,7 @@ import { FilterState } from '@/types/filter';
 
 interface Frequencies {
   tags: Tag[];
-  categories: RankedItem[];S
+  categories: RankedItem[];
   subcategories: RankedItem[];
   regions: RankedItem[];
   companies: RankedItem[];

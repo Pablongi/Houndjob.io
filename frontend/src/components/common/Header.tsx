@@ -1,7 +1,7 @@
 // src/components/common/Header.tsx
-import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import styled from 'styled-components';
+import { useState } from 'react';
 
 const HeaderContainer = styled.header`
   background: var(--header-gradient); /* Updated to use gradient */

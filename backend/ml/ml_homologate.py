@@ -65,4 +65,4 @@ def advanced_homologate(df=None, labeled_file='ml/labeled_jobs.csv'):
 
 if __name__ == "__main__":
     df = load_data()
-    advanced_homologate(df)
+    advanced_homologate(df) 

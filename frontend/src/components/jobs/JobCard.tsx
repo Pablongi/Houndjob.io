@@ -1,4 +1,5 @@
-import React, { memo, useState } from 'react';
+import { memo, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { Job, Tag } from '@/types/job';
@@ -9,7 +10,7 @@ import { supabase } from '@/supabase';
 import { FilterState } from '@/types/filter';
 
 const Card = styled(motion.div)`
-  background: var(--card-gradient); /* Updated to use gradient */
+  background: var(--card-gradient);
   border-radius: 12px;
   padding: 16px;
   box-shadow: var(--shadow);
@@ -21,7 +22,7 @@ const Card = styled(motion.div)`
   &:hover {
     box-shadow: var(--card-hover-shadow);
   }
-  min-height: 300px; /* Altura mínima para consistencia en grid */
+  min-height: 300px;
   height: auto;
   @media (max-width: 768px) {
     padding: 12px;
@@ -154,7 +155,7 @@ interface JobCardProps {
   job: Job;
 }
 
-const JobCard: React.FC<JobCardProps> = memo(({ job }) => {
+const JobCard = memo<JobCardProps>(({ job }) => {
   const { setFilters, user } = useAppContext();
   const [comment, setComment] = useState<string>('');
 
@@ -167,8 +168,17 @@ const JobCard: React.FC<JobCardProps> = memo(({ job }) => {
   const daysAgo = Math.floor((Date.now() - timestamp) / (1000 * 3600 * 24));
   const publishedText = `Posted ${daysAgo} days ago`;
 
-  const uniqueCategories = [...new Set(job.tags.map((t: Tag) => t.categoría).filter((c): c is string => !!c))].slice(0, 2) as string[];
-  const uniqueSubcategories = [...new Set(job.tags.map((t: Tag) => t.subcategoría).filter((s): s is string => !!s))].slice(0, 3) as string[];
+  const uniqueCategories = [...new Set(
+    job.tags
+      .map((tag: Tag) => tag.categoría ?? '')
+      .filter((category: string) => category !== '')
+  )].slice(0, 2);
+
+  const uniqueSubcategories = [...new Set(
+    job.tags
+      .map((tag: Tag) => tag.subcategoría ?? '')
+      .filter((subcategory: string) => subcategory !== '')
+  )].slice(0, 3);
 
   const applyFilter = (type: 'category' | 'subcategory' | 'tag' | 'company', value: string) => {
     setFilters((prev: FilterState) => {
@@ -187,7 +197,7 @@ const JobCard: React.FC<JobCardProps> = memo(({ job }) => {
   };
 
   const searchSimilar = () => {
-    const similarSearch = [...new Set(job.tags.map((t: Tag) => t.tag))].join(' ');
+    const similarSearch = [...new Set(job.tags.map((tag: Tag) => tag.tag))].join(' ');
     setFilters((prev: FilterState) => ({ ...prev, search: similarSearch }));
   };
 
@@ -287,7 +297,12 @@ const JobCard: React.FC<JobCardProps> = memo(({ job }) => {
           {user && (
             <ActionButton onClick={addFavorite}>Favorito</ActionButton>
           )}
-          <input type="text" value={comment} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setComment(e.target.value)} placeholder="Comentario" />
+          <input
+            type="text"
+            value={comment}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setComment(e.target.value)}
+            placeholder="Comentario"
+          />
           <ActionButton onClick={addComment}>Comentar</ActionButton>
         </BottomRight>
       </BottomSection>

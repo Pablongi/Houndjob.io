@@ -1,12 +1,13 @@
 {
   "compilerOptions": {
     "composite": true,
+    "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "target": "ESNext",
-    "strict": true
+    "strict": true,
+    "noEmit": true,
+    "types": ["vite/client"]
   },
   "include": ["vite.config.mjs"]
 }

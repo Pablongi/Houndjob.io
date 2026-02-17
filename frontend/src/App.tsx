@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '@/components/common/Header';
@@ -11,7 +10,7 @@ import { useJobsWithCache as useJobs } from '@/hooks/useJobsWithCache';
 import SelectedFilters from '@/components/filters/SelectedFilters';
 import { FilterState } from '@/types/filter';
 import { supabase } from '@/supabase';
-import { Session } from '@supabase/supabase-js';
+import { useState, useEffect } from 'react';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -129,13 +128,13 @@ const ClearAllButton = styled.button`
   }
 `;
 
-const AppContent: React.FC = () => {
+const AppContent = () => {
   console.log('App rendering');  // Added debug log
 
   const { jobs, loadMoreJobs, hasMore, loading, error, refetch } = useJobs();
   const { filters, setFilters, user, setUser } = useAppContext();
-  const [isFiltersMinimized, setIsFiltersMinimized] = React.useState(false);
-  const [theme, setTheme] = React.useState<'light' | 'dark' | 'system'>(
+  const [isFiltersMinimized, setIsFiltersMinimized] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(
     (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system'
   );
 
@@ -157,7 +156,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     localStorage.setItem('theme', theme);
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = () => {
@@ -248,7 +247,7 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
+const App = () => {
   return (
     <AppProvider>
       <AppContent />

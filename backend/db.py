@@ -1,4 +1,5 @@
 import os
+import hashlib
 from dotenv import load_dotenv
 from supabase import create_client
 import logging
@@ -7,6 +8,19 @@ from datetime import datetime
 load_dotenv()
 logger = logging.getLogger(__name__)
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
+
+def generate_job_hash(job: dict) -> str:
+    """
+    Genera un hash único basado en título, empresa, portal y fecha de publicación.
+    Esto evita duplicados incluso si el link cambia ligeramente.
+    """
+    key = (
+        job.get('title', '').strip().lower() +
+        job.get('company', '').strip().lower() +
+        job.get('source', '').lower() +
+        job.get('date_posted', '')
+    )
+    return hashlib.md5(key.encode('utf-8')).hexdigest()
 
 def upsert_job_batch(jobs: list) -> bool:
     job_clean_list = []
@@ -18,27 +32,34 @@ def upsert_job_batch(jobs: list) -> bool:
             "region": job.get("region"),
             "comuna": job.get("comuna"),
             "description": job.get("description"),
-            "salary": job.get("salary"),
             "experience": job.get("experience"),
+            "salary": job.get("salary"),
             "date_posted": job.get("date_posted"),
+            "time_since_posted": job.get("time_since_posted"),
             "link": job["link"],
             "company_logo": job.get("company_logo"),
+            "portal_logo": job.get("portal_logo"),
             "source": job.get("source", "Unknown"),
             "is_active": True,
-            "scraped_at": datetime.utcnow().isoformat() + "Z"
+            "scraped_at": datetime.utcnow().isoformat() + "Z",
+            "job_hash": generate_job_hash(job),  # Nueva columna para deduplicación robusta
         }
         job_clean_list.append(job_clean)
     
     try:
-        result = supabase.table('job_offers').upsert(job_clean_list, on_conflict='link').execute()
+        # Upsert usando job_hash + link como conflicto (más robusto que solo link)
+        result = supabase.table('job_offers') \
+            .upsert(job_clean_list, on_conflict=['job_hash', 'link']) \
+            .execute()
+        
         if result.data:
-            logger.info(f"Batch guardado: {len(result.data)} jobs")
+            logger.info(f"Upsert OK: {len(result.data)} jobs nuevos/deduplicados")
             return True
         else:
-            logger.error(f"Falló batch upsert: {result.error}")
+            logger.error(f"Falló upsert: {result.error}")
             return False
     except Exception as e:
-        logger.error(f"Error batch en Supabase: {str(e)}")
+        logger.error(f"Error upsert en Supabase: {str(e)}")
         return False
 
 def get_jobs(limit=50):

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, FormEvent, ChangeEvent } from 'react';
 import styled from 'styled-components';
 import { useAppContext } from './FilterContext';
 import { Job, Tag } from '@/types/job';
@@ -56,7 +56,7 @@ const SearchButton = styled.button`
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--button-gradient); /* Updated to use gradient */
+  background: var(--button-gradient);
   border: none;
   color: #fff;
   cursor: pointer;
@@ -72,7 +72,7 @@ const SearchButton = styled.button`
 const SuggestionsContainer = styled.div`
   position: absolute;
   width: 100%;
-  background: var(--dropdown-gradient); /* Updated to use gradient */
+  background: var(--dropdown-gradient);
   border-radius: 8px;
   z-index: 1000;
   max-height: 240px;
@@ -114,7 +114,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ allJobs }) => {
   const { filters, setFilters } = useAppContext();
   const [searchTerm, setSearchTerm] = useState<string>(filters.search);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
-  const [debounceTimeout, setDebounceTimeout] = useState<number | null>(null);
+  const [debounceTimeout, setDebounceTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const allTerms = useMemo(() => {
     const terms = new Set<string>();
@@ -143,7 +143,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ allJobs }) => {
     return matches;
   }, [searchTerm, allTerms]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearchTerm(newValue);
     if (debounceTimeout) clearTimeout(debounceTimeout);
@@ -154,14 +154,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ allJobs }) => {
     setDebounceTimeout(timeout);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
-    try {
-      setFilters((prev: FilterState) => ({ ...prev, search: searchTerm }));
-      setShowSuggestions(false);
-    } catch (error) {
-      console.error('Error en handleSearchSubmit:', error);
-    }
+    setFilters((prev: FilterState) => ({ ...prev, search: searchTerm }));
+    setShowSuggestions(false);
   };
 
   const handleSuggestionClick = (suggestion: string) => {

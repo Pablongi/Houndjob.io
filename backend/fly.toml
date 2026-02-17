@@ -1,0 +1,21 @@
+# fly.toml app configuration file generated for houndjob-backend on 2026-01-25T18:25:49-03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'houndjob-backend'
+primary_region = 'gru'
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  size = "performance-2x"  # 2 CPUs performance (mejor para ML pesado)
+  memory = "8gb"           # 8GB RAM (fix OOM en preloads)

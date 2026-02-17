@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
 import { FilterState } from '@/types/filter';
 import { Job } from '@/types/job';
 import { supabase } from '@/supabase';
 import { Session } from '@supabase/supabase-js';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface AppContextType {
   filters: FilterState;

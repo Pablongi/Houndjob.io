@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '@/components/filters/FilterContext';
 import { filterJobs } from '@/logic/filterUtils';
 import JobCard from './JobCard';
@@ -30,7 +30,7 @@ const LoadingContainer = styled.div`
   align-items: flex-start;
   height: 200px;
   width: 100%;
-  padding-top: 20px; /* Cerca del borde superior */
+  padding-top: 20px;
 `;
 
 const LogoSpin = styled.img`
@@ -69,13 +69,17 @@ interface JobListProps {
   error: unknown;
 }
 
-const JobList: React.FC<JobListProps> = ({ jobs, loadMoreJobs, hasMore, loading, error }) => {
+const JobList = ({ jobs, loadMoreJobs, hasMore, loading, error }: JobListProps) => {
   const { filters } = useAppContext();
+
   const filteredJobs = useMemo(() => {
     let result = filterJobs(jobs, filters);
-    result.sort((a: Job, b: Job) => new Date(b.attributes.creation_date).getTime() - new Date(a.attributes.creation_date).getTime());
+    result.sort((a: Job, b: Job) => 
+      new Date(b.attributes.creation_date).getTime() - new Date(a.attributes.creation_date).getTime()
+    );
     return result;
   }, [jobs, filters]);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,9 +91,11 @@ const JobList: React.FC<JobListProps> = ({ jobs, loadMoreJobs, hasMore, loading,
       },
       { threshold: 0.5, rootMargin: '200px' }
     );
+
     if (bottomRef.current) {
       observer.observe(bottomRef.current);
     }
+
     return () => {
       if (bottomRef.current) {
         observer.unobserve(bottomRef.current);
@@ -98,11 +104,19 @@ const JobList: React.FC<JobListProps> = ({ jobs, loadMoreJobs, hasMore, loading,
   }, [hasMore, loading, loadMoreJobs]);
 
   if (error) {
-    return <p style={{ color: 'var(--accent-red)', textAlign: 'center' }} aria-live="assertive">Error al cargar empleos: {String(error)}</p>;
+    return (
+      <p style={{ color: 'var(--accent-red)', textAlign: 'center' }} aria-live="assertive">
+        Error al cargar empleos: {String(error)}
+      </p>
+    );
   }
 
   if (jobs.length === 0 && loading) {
-    return <LoadingContainer><LogoSpin src="/logos/Houndjob_logo.png" alt="Cargando HoundJob" /></LoadingContainer>;
+    return (
+      <LoadingContainer>
+        <LogoSpin src="/logos/Houndjob_logo.png" alt="Cargando HoundJob" />
+      </LoadingContainer>
+    );
   }
 
   if (filteredJobs.length === 0) {

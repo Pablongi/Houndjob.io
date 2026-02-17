@@ -1,4 +1,3 @@
-import React from 'react';
 import styled from 'styled-components';
 import { useAppContext } from './FilterContext';
 import { portals } from '@/constants';
@@ -7,13 +6,14 @@ import SelectedFilters from './SelectedFilters';
 import { computeFrequencies } from '@/utils/frequencies';
 import { Job } from '@/types/job';
 import { FilterState } from '@/types/filter';
+import { useState, useEffect } from 'react';
 
 const ControlsContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto; /* No expande */
-  margin-left: auto; /* Alinea a extremo derecho */
+  flex: 0 0 auto;
+  margin-left: auto;
 `;
 
 const SwitchContainer = styled.div`
@@ -85,7 +85,7 @@ const PortalRow = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
-  height: 50px; /* Compacta */
+  height: 50px;
   overflow: hidden;
 `;
 
@@ -95,12 +95,12 @@ interface FiltersPanelProps {
   isMinimized?: boolean;
 }
 
-const FiltersPanel: React.FC<FiltersPanelProps> = ({ allJobs, onMinimize, isMinimized = false }) => {
-  const { filters, setFilters, strictMode, setStrictMode, jobs } = useAppContext();
+const FiltersPanel = ({ allJobs, onMinimize, isMinimized = false }: FiltersPanelProps) => {
+  const { filters, setFilters, strictMode, setStrictMode } = useAppContext();
   const frequencies = computeFrequencies(allJobs, filters);
-  const [internalMinimized, setInternalMinimized] = React.useState(isMinimized);
+  const [internalMinimized, setInternalMinimized] = useState(isMinimized);
 
-  React.useEffect(() => {
+  useEffect(() => {
     onMinimize(internalMinimized);
   }, [internalMinimized, onMinimize]);
 

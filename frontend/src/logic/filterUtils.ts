@@ -84,7 +84,7 @@ export const filterJobs = (jobs: Job[], filters: FilterState): Job[] => {
     filteredJobs = filteredJobs.filter(job =>
       normalizeText(job.attributes.title).includes(searchTerm) ||
       normalizeText(job.attributes.company).includes(searchTerm) ||
-      normalizeText(job.description).includes(searchTerm) ||
+      (job.description ? normalizeText(job.description).includes(searchTerm) : false) ||
       job.tags.some((tag: Tag) => normalizeText(tag.tag).includes(searchTerm)) ||
       job.tags.some((tag: Tag) => normalizeText(tag.categoría || '').includes(searchTerm)) ||
       job.tags.some((tag: Tag) => normalizeText(tag.subcategoría || '').includes(searchTerm))

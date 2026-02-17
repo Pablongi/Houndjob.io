@@ -101,7 +101,7 @@ const FilterDropdown = styled(motion.div)`
   position: absolute;
   top: calc(100% + 2px);
   right: 0;
-  background: var(--dropdown-gradient); /* Updated to use gradient */
+  background: var(--dropdown-gradient);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -152,7 +152,7 @@ interface FilterButtonProps {
 
 export const FilterButton = styled(motion.button)<FilterButtonProps>`
   padding: 4px 8px;
-  background: ${({ active }) => (active ? 'var(--primary)' : 'var(--button-gradient)')}; /* Updated active to solid, inactive to gradient */
+  background: ${({ active }) => (active ? 'var(--primary)' : 'var(--button-gradient)')};
   color: ${({ active }) => (active ? '#fff' : 'var(--text)')};
   border: none;
   border-radius: 16px;
@@ -214,7 +214,7 @@ const FilterCategory: React.FC<FilterCategoryProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverSide, setHoverSide] = useState<'left' | 'right' | null>(null);
-  const scrollIntervalRef = useRef<number | null>(null);
+  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filteredItems = useMemo(() => {
     let filtered = allItems;

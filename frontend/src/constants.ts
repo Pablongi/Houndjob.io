@@ -178,7 +178,7 @@ TAG_CATEGORIES.forEach((category: Category) => {
 
 export const subToTags = new Map<string, Set<string>>();
 TAG_CATEGORIES.forEach((category: Category) => {
-  category.subcategorías.forEach((sub) => {
+  category.subcategorías.forEach((sub: { nombre: string; tags: string[] }) => {
     const tags = new Set<string>(sub.tags);
     subToTags.set(sub.nombre, tags);
   });

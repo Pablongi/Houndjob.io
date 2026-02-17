@@ -139,6 +139,38 @@ def normalize_date_posted(date_str):
         return parsed.strftime('%Y-%m-%d')
     return date_str
 
+def fix_time_since_posted(date_posted):
+    if not date_posted or date_posted in ["", "Sin fecha", "No disponible"]:
+        return "Sin tiempo"
+    
+    # Si es una fecha normalizada (YYYY-MM-DD), calculamos el tiempo relativo
+    try:
+        posted_date = datetime.strptime(date_posted, "%Y-%m-%d")
+        delta = datetime.now() - posted_date
+        days = delta.days
+        
+        if days < 0:
+            return "En el futuro"
+        if days == 0:
+            return "Hoy"
+        if days == 1:
+            return "Ayer"
+        if days <= 30:
+            return f"Hace {days} días"
+        months = round(days / 30)
+        if months <= 12:
+            return f"Hace {months} meses"
+        years = round(days / 365)
+        return f"Hace {years} años"
+    
+    except ValueError:
+        # Si no es una fecha válida (probablemente el string original con "Publicado hace...")
+        time_str = re.sub(r"(?i)^(publicado|posted)\s*(hace|el|on)?\s*", "", date_posted).strip()
+        time_str = time_str.capitalize()
+        if time_str.lower().startswith("hace"):
+            time_str = "H" + time_str[1:]
+        return time_str or "Sin tiempo"
+
 async def async_scrape_requests(session, url, headers, proxy, selector, extract_func, max_offers=3, portal_name=""):
     cache = load_cache(portal_name)
     if cache:

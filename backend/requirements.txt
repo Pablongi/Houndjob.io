@@ -10,18 +10,6 @@ nest_asyncio
 2captcha-python
 playwright
 
-# ML
-transformers
-scikit-learn
-pandas
-sentence-transformers
-datasets
-spacy
-google-cloud-aiplatform
-
 # Web/Prod
 flask==2.3.3
 gunicorn==20.1.0
-
-# GCP optim
-google-cloud-functions

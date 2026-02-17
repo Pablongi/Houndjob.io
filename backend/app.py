@@ -1,16 +1,15 @@
-from flask import Flask, request
+from flask import Flask
 import os
 import asyncio
 from scraper import main as run_scraper
-from ml.ml_homologate import model, classifier, nlp  # Preload from ml_homologate
 
 app = Flask(__name__)
 
 @app.route('/run', methods=['GET', 'POST'])
 async def trigger_scraper():
     try:
-        await run_scraper()  # Async
-        return "Scrape + ML completed!", 200
+        await run_scraper()
+        return "Scrape completed! (ML temporalmente desactivado - jobs crudos guardados)", 200
     except Exception as e:
         return f"Error: {str(e)}", 500
 
