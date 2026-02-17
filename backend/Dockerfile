@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# Dependencias del sistema para Playwright/Chromium en slim (versión corregida 2026)
+# Dependencias del sistema para Playwright/Chromium (formato correcto)
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     libexpat1 \
     libfontconfig1 \
     libgcc1 \
-    libgdk-pixbuf-2.0-0 \     # <-- CAMBIO AQUÍ: quitamos el "xlib" obsoleto
+    libgdk-pixbuf-2.0-0 \
     libglib2.0-0 \
     libgtk-3-0 \
     libnspr4 \
@@ -45,7 +45,7 @@ COPY . .
 # Instala setuptools primero (fix pkg_resources)
 RUN pip install --no-cache-dir setuptools
 
-# Instala el resto
+# Instala el resto de dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Instala Chromium para Playwright
