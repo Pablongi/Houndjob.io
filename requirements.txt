@@ -1,0 +1,17 @@
+# Básicas
+aiohttp
+beautifulsoup4
+requests
+dateparser
+python-dateutil
+python-dotenv
+supabase
+nest_asyncio
+2captcha-python
+playwright
+setuptools
+
+
+# Web/Prod
+flask==2.3.3
+gunicorn==20.1.0
