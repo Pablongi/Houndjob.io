@@ -48,7 +48,6 @@ def upsert_job_batch(jobs: list) -> bool:
         job_clean_list.append(job_clean)
     
     try:
-        # Upsert usando job_hash + link como conflicto (más robusto que solo link)
         result = supabase.table('job_offers') \
             .upsert(job_clean_list, on_conflict=['job_hash', 'link']) \
             .execute()
