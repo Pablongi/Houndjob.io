@@ -6,7 +6,7 @@ from scraper import main as run_scraper
 app = Flask(__name__)
 
 @app.route('/run', methods=['GET', 'POST'])
-def trigger_scraper():          # ← Cambiado a sincrónico
+def trigger_scraper():   # ← Versión sincrónica (esto resuelve el error async)
     try:
         asyncio.run(run_scraper())
         return "Scrape completed! (ML temporalmente desactivado - jobs crudos guardados)", 200
