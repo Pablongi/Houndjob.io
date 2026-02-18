@@ -6,9 +6,9 @@ from scraper import main as run_scraper
 app = Flask(__name__)
 
 @app.route('/run', methods=['GET', 'POST'])
-async def trigger_scraper():
+def trigger_scraper():          # ← Cambiado a sincrónico
     try:
-        await run_scraper()
+        asyncio.run(run_scraper())
         return "Scrape completed! (ML temporalmente desactivado - jobs crudos guardados)", 200
     except Exception as e:
         return f"Error: {str(e)}", 500
