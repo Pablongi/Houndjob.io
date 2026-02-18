@@ -1,17 +1,22 @@
 from flask import Flask
 import os
+import threading
 import asyncio
 from scraper import main as run_scraper
 
 app = Flask(__name__)
 
-@app.route('/run', methods=['GET', 'POST'])
-def trigger_scraper():   # ← Versión sincrónica (esto resuelve el error async)
+def run_scraper_background():
     try:
         asyncio.run(run_scraper())
-        return "Scrape completed! (ML temporalmente desactivado - jobs crudos guardados)", 200
+        print("Scrape completed in background!")
     except Exception as e:
-        return f"Error: {str(e)}", 500
+        print(f"Scraper error: {str(e)}")
+
+@app.route('/run', methods=['GET', 'POST'])
+def trigger_scraper():
+    threading.Thread(target=run_scraper_background, daemon=True).start()
+    return "Scrape started in background! Check logs for progress.", 200
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

@@ -51,4 +51,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 4. Instala Chromium para Playwright
 RUN playwright install chromium --with-deps
 
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers=4 app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers=4 --timeout 600 app:app"]
