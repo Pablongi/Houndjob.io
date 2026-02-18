@@ -10,6 +10,7 @@ nest_asyncio
 2captcha-python
 playwright
 
-# Web/Prod
+# Web/Prod (versión moderna de gunicorn)
 flask==2.3.3
-gunicorn==20.1.0
+gunicorn==22.0.0      # ← CAMBIO AQUÍ (nueva versión, más estable)
+setuptools            # ← Aseguramos que esté

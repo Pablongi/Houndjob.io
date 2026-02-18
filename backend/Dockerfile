@@ -1,6 +1,9 @@
 FROM python:3.12-slim
 
-# Dependencias del sistema para Playwright/Chromium (formato correcto)
+# 1. Instala setuptools PRIMERO (esto es clave)
+RUN pip install --no-cache-dir setuptools wheel
+
+# 2. Dependencias del sistema para Playwright
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -42,13 +45,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 COPY . .
 
-# Instala setuptools primero (fix pkg_resources)
-RUN pip install --no-cache-dir setuptools
-
-# Instala el resto de dependencias
+# 3. Instala dependencias Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Instala Chromium para Playwright
+# 4. Instala Chromium para Playwright
 RUN playwright install chromium --with-deps
 
 CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers=4 app:app"]
