@@ -15,16 +15,17 @@ def generate_job_hash(job: dict) -> str:
     Esto evita duplicados incluso si el link cambia ligeramente.
     """
     key = (
-        job.get('title', '').strip().lower() +
-        job.get('company', '').strip().lower() +
-        job.get('source', '').lower() +
-        job.get('date_posted', '')
+        str(job.get('title', '')).strip().lower() +
+        str(job.get('company', '')).strip().lower() +
+        str(job.get('source', '')).lower() +
+        str(job.get('date_posted', ''))
     )
     return hashlib.md5(key.encode('utf-8')).hexdigest()
 
 def upsert_job_batch(jobs: list) -> bool:
     job_clean_list = []
     for job in jobs:
+        job_hash = generate_job_hash(job)
         job_clean = {
             "title": job.get("title", "Sin título"),
             "company": job.get("company", "Sin empresa"),
@@ -42,7 +43,7 @@ def upsert_job_batch(jobs: list) -> bool:
             "source": job.get("source", "Unknown"),
             "is_active": True,
             "scraped_at": datetime.utcnow().isoformat() + "Z",
-            "job_hash": generate_job_hash(job),  # Nueva columna para deduplicación robusta
+            "job_hash": job_hash,
         }
         job_clean_list.append(job_clean)
     
