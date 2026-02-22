@@ -11,8 +11,8 @@ supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_
 
 def generate_job_hash(job: dict) -> str:
     """
-    Genera un hash único basado en título, empresa, portal y fecha de publicación.
-    Esto evita duplicados incluso si el link cambia ligeramente.
+    Genera un hash único basado en título, empresa, fuente y fecha.
+    Esto evita duplicados incluso si el link cambia.
     """
     key = (
         str(job.get('title', '')).strip().lower() +
@@ -23,6 +23,10 @@ def generate_job_hash(job: dict) -> str:
     return hashlib.md5(key.encode('utf-8')).hexdigest()
 
 def upsert_job_batch(jobs: list) -> bool:
+    """
+    Inserta o actualiza ofertas usando job_hash + link como clave única.
+    Usa ignore_duplicates=True para evitar errores si ya existe.
+    """
     job_clean_list = []
     for job in jobs:
         job_hash = generate_job_hash(job)
@@ -49,21 +53,22 @@ def upsert_job_batch(jobs: list) -> bool:
     
     try:
         result = supabase.table('job_offers') \
-            .upsert(job_clean_list, on_conflict=['job_hash', 'link']) \
+            .upsert(job_clean_list, on_conflict=['job_hash', 'link'], ignore_duplicates=True) \
             .execute()
         
-        if result.data:
-            logger.info(f"Upsert OK: {len(result.data)} jobs nuevos/deduplicados")
-            return True
-        else:
-            logger.error(f"Falló upsert: {result.error}")
-            return False
+        logger.info(f"Upsert OK: {len(result.data)} jobs procesados")
+        return True
     except Exception as e:
         logger.error(f"Error upsert en Supabase: {str(e)}")
         return False
 
 def get_jobs(limit=50):
-    result = supabase.table('job_offers').select("*").eq('is_active', True).order('scraped_at', desc=True).limit(limit).execute()
+    result = supabase.table('job_offers') \
+        .select("*") \
+        .eq('is_active', True) \
+        .order('scraped_at', desc=True) \
+        .limit(limit) \
+        .execute()
     return result.data or []
 
 def test_connection():
