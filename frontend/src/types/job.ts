@@ -1,3 +1,4 @@
+// /frontend/src/types/job.ts
 export interface JobAttributes {
   title: string;
   company: string;
@@ -6,14 +7,22 @@ export interface JobAttributes {
   creation_date: string;
   logo_url: string;
   region?: string | null;
-  jobType?: string | null;
-  salary?: number | null;
-  minSalary?: string | null;
-  maxSalary?: string | null;
-  category?: string | null;
-  modality?: string | null;
+  city?: string | null;
+  salary?: string | null;
   experience?: string | null;
-  jobTitle?: string;
+  modality?: string | null;
+  publicUrl?: string;
+  date_posted?: string;
+  views?: number;           // ← NUEVO
+}
+
+export interface Job {
+  id: string;
+  description: string;
+  attributes: JobAttributes;
+  publicUrl: string;
+  tags: Tag[];
+  views?: number;           // ← NUEVO (para compatibilidad con datos planos del backend)
 }
 
 export interface Tag {
@@ -23,25 +32,16 @@ export interface Tag {
   subcategoría?: string;
 }
 
-export interface RankedItem {
-  name: string;
-  count: number;
-  logo?: string;
-}
-
-export interface Job {
-  id: string;
-  description: string;
-  attributes: JobAttributes;
-  publicUrl?: string;
-  tags: Tag[];
-  portalLink?: string;
-}
-
 export interface Category {
   categoría: string;
   subcategorías: {
     nombre: string;
     tags: string[];
   }[];
+}
+
+export interface RankedItem {
+  name: string;
+  count: number;
+  logo?: string;
 }

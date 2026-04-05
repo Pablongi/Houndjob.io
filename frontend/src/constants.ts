@@ -1,12 +1,54 @@
 import { Category } from '@/types/job';
 
-export const portals = ['Get on Board', 'BNE.cl', 'TrabajoConSentido'];
+// ====================== PORTALES + LOGOS ======================
+export const portals = [
+  'Adecco', 'Computrabajo', 'Buscojobs', 'Randstad', 'Opcionempleo',
+  'Michael Page', 'ADP Servicio Civil', 'Robert Half', 'Reqlut', 'Laborum',
+  'ManpowerChile', 'Trabajando', 'Workana', 'Chiletrabajos', 'Jooble',
+  'LinkedIn', 'Robert Walters', 'Trovit', 'UnMejorEmpleo',
+  'Prácticas para Chile', 'Trabaja en el Estado'
+];
 
-export const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship'];
+export const portalToLogo: { [key: string]: string } = {
+  'Adecco': '/portals/Adecco.svg',
+  'ADP Servicio Civil': '/portals/ADP Servicio Civil.svg',
+  'Buscojobs': '/portals/Buscojobs.svg',
+  'Chiletrabajos': '/portals/Chiletrabajos.svg',
+  'Computrabajo': '/portals/Computrabajo.svg',
+  'Jooble': '/portals/Jooble.svg',
+  'Laborum': '/portals/Laborum.svg',
+  'LinkedIn': '/portals/LinkedIn.svg',
+  'ManpowerChile': '/portals/ManpowerChile.svg',
+  'Michael Page': '/portals/Michael Page.svg',
+  'Opcionempleo': '/portals/Opcionempleo.svg',
+  'Prácticas para Chile': '/portals/Prácticas para Chile.svg',
+  'Randstad': '/portals/Randstad.svg',
+  'Reqlut': '/portals/Reqlut.svg',
+  'Robert Half': '/portals/Robert Half.svg',
+  'Robert Walters': '/portals/Robert Walters.svg',
+  'Trabaja en el Estado': '/portals/Trabaja en el Estado.svg',
+  'Trabajando': '/portals/Trabajando.svg',
+  'Trovit': '/portals/Trovit.svg',
+  'UnMejorEmpleo': '/portals/UnMejorEmpleo.svg',
+  'Workana': '/portals/Workana.svg',
+  'default': '/portals/Trabajoconsentido_logo.png'
+};
 
+// ====================== FILTROS HOMOLOGADOS ======================
+export const EXPERIENCE_LEVELS = ['Sin experiencia', 'Junior', 'Mid', 'Senior', 'Indiferente'];
+export const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Proyecto', 'Práctica'];
 export const MODALITIES = ['Presencial', 'Remoto', 'Híbrido'];
 
-export const EXPERIENCE_LEVELS = ['Junior', 'Mid', 'Senior'];
+// ====================== SALARY RANGES LIMPIO ======================
+export const SALARY_RANGES = [
+  'Sin salario',
+  'Menos de $500.000',
+  '$500.000 - $800.000',
+  '$800.000 - $1.200.000',
+  '$1.200.000 - $1.800.000',
+  '$1.800.000 - $2.500.000',
+  'Más de $2.500.000'
+];
 
 export const TAG_CATEGORIES: Category[] = [
   {

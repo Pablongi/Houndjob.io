@@ -1,12 +1,8 @@
-import { useInfiniteQuery, UseInfiniteQueryResult, InfiniteData } from '@tanstack/react-query';
-import { supabase } from '@/supabase';
-import { Job } from '@/types/job';
+// /frontend/src/hooks/useJobsWithCache.ts
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useAppContext } from '@/components/filters/FilterContext';
-
-interface PageData {
-  jobs: Job[];
-  page: number;
-}
+import { Job } from '@/types/job';
+import { logger } from '@/utils/logger';
 
 const PAGE_SIZE = 50;
 
@@ -14,94 +10,85 @@ const mapToJob = (row: any): Job => ({
   id: row.id,
   description: row.description || '',
   attributes: {
-    title: row.title || '',
-    company: row.company || '',
+    title: row.title || 'Sin título',
+    company: row.company || 'Sin empresa',
     country: row.country || 'Chile',
-    portal: row.portal || '',
-    creation_date: row.creation_date || new Date().toISOString(),
-    logo_url: row.logo_url || '',
+    portal: row.source || '',
+    creation_date: row.scraped_at || '',
+    logo_url: row.company_logo || '',
     region: row.region || null,
-    jobType: row.job_type || null,
-    salary: row.salary || null,
-    minSalary: row.min_salary || null,
-    maxSalary: row.max_salary || null,
-    category: row.category || null,
-    modality: row.modality || 'Presencial',
-    experience: row.experience || null,
-    jobTitle: row.job_title || '',
+    city: row.city || null,
+    salary: row.salary || 'Sin salario',
+    experience: row.experience || 'Sin experiencia',
+    modality: row.modality || null,
+    publicUrl: row.link || '#',
+    date_posted: row.date_posted || '',
+    views: row.views || 0,
   },
-  publicUrl: row.public_url || '',
-  tags: row.tags || [],
+  publicUrl: row.link || '#',
+  tags: [],
 });
 
 export const useJobsWithCache = () => {
   const { filters } = useAppContext();
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  }: UseInfiniteQueryResult<InfiniteData<PageData>, unknown> = useInfiniteQuery({
-    queryKey: ['jobs', filters],
+  const query = useInfiniteQuery({
+    queryKey: ['jobs', JSON.stringify(filters)],
+
     queryFn: async ({ pageParam = 0 }) => {
-      let query = supabase
-        .from('job_offers')
-        .select('*')
-        .order('creation_date', { ascending: false })
-        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+      logger.actionStart(`Cargando página ${pageParam}`);
 
-      // Apply server-side filters where possible
-      if (filters.selectedPortals.size > 0) {
-        query = query.in('portal', Array.from(filters.selectedPortals));
-      }
-      if (filters.selectedCountries.size > 0) {
-        query = query.in('country', Array.from(filters.selectedCountries));
-      }
-      if (filters.selectedRegions.size > 0) {
-        query = query.in('region', Array.from(filters.selectedRegions));
-      }
-      if (filters.company) {
-        query = query.ilike('company', `%${filters.company}%`);
-      }
-      if (filters.selectedModalities.size > 0) {
-        query = query.in('modality', Array.from(filters.selectedModalities));
-      }
-      if (filters.selectedExperiences.size > 0) {
-        query = query.in('experience', Array.from(filters.selectedExperiences));
-      }
-      // For search, categories, subcategories, tags, jobTitles - handle client-side as they may require complex queries
+      const params = new URLSearchParams({
+        page: pageParam.toString(),
+        size: PAGE_SIZE.toString(),
+      });
 
-      const { data: rawJobs, error: fetchError } = await query;
+      logger.debug('🔍 Filtros enviados al backend:', Object.fromEntries(params));
 
-      if (fetchError) throw fetchError;
+      if (filters.selectedPortals.size) params.append('portals', Array.from(filters.selectedPortals).join(','));
+      if (filters.selectedModalities.size) params.append('modalities', Array.from(filters.selectedModalities).join(','));
+      if (filters.selectedExperiences.size) params.append('experiences', Array.from(filters.selectedExperiences).join(','));
+      if (filters.selectedCountries.size) params.append('countries', Array.from(filters.selectedCountries).join(','));
+      if (filters.selectedRegions.size) params.append('regions', Array.from(filters.selectedRegions).join(','));
+      if (filters.company) params.append('company', filters.company);
+      if (filters.search) params.append('search', filters.search);
 
-      const jobs = rawJobs ? rawJobs.map(mapToJob) : [];
+      try {
+        const res = await fetch(`/api/jobs?${params.toString()}`);
 
-      return { jobs, page: pageParam };
+        if (!res.ok) {
+          const errorText = await res.text();
+          logger.actionEnd(`Cargando página ${pageParam}`, false, { status: res.status, error: errorText });
+          throw new Error(`Error ${res.status}: ${errorText}`);
+        }
+
+        const data = await res.json();
+        logger.actionEnd(`Cargando página ${pageParam}`, true, { jobs: data.jobs?.length || 0 });
+        return {
+          jobs: data.jobs.map(mapToJob),
+          page: pageParam,
+          hasMore: data.hasMore ?? false,
+        };
+      } catch (err) {
+        logger.actionEnd(`Cargando página ${pageParam}`, false, err);
+        throw err;
+      }
     },
-    getNextPageParam: (lastPage: PageData) =>
-      lastPage.jobs.length === PAGE_SIZE ? lastPage.page + 1 : undefined,
+
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
     initialPageParam: 0,
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    gcTime: 10 * 60 * 1000,
+    retry: 2,
     refetchOnWindowFocus: false,
   });
 
-  const jobs = data?.pages.flatMap((page: PageData) => page.jobs) || [];
-
-  const loadMoreJobs = () => {
-    if (hasNextPage && !isFetching) {
-      fetchNextPage();
-    }
+  return {
+    jobs: query.data?.pages.flatMap((p) => p.jobs) || [],
+    loadMoreJobs: () => query.fetchNextPage(),
+    hasMore: query.hasNextPage,
+    loading: query.isLoading || query.isFetching,
+    error: query.error,
+    refetch: query.refetch,
   };
-
-  if (error) {
-    console.error('[Diagnostic] Fetch jobs error:', error);
-  }
-
-  return { jobs, loadMoreJobs, hasMore: hasNextPage, loading: isLoading || isFetching, error, refetch };
 };

@@ -1,26 +1,49 @@
 import asyncio
 from aiohttp import ClientSession
-from utils import logger, load_cache, save_cache, async_scrape_requests, scrape_with_playwright, validate_offer, get_proxy, get_user_agent, fix_time_since_posted, is_location, normalize_date_posted
-from db import upsert_job_batch
-# ML off - no pandas needed
+import aiohttp
 from datetime import datetime, timedelta
 import os
 import json
-import aiohttp
-from urllib.parse import urljoin
-import re
 import time
 from bs4 import BeautifulSoup
-from utils import create_unified_job_offer
+from urllib.parse import urljoin
+import re
+from state import scrape_status, status_lock   # ← Importa desde state.py
+# Imports necesarios
+from utils import (
+    logger,
+    async_scrape_requests,
+    scrape_with_playwright,
+    validate_offer,
+    get_proxy,
+    get_user_agent,
+    create_unified_job_offer
+)
 
+from db import upsert_job_batch, supabase
+
+# ==================== ESTADO GLOBAL PARA DASHBOARD ====================
+scrape_status = {}
+status_lock = asyncio.Lock()
+current_run_id = None
+
+# ==================== LIMITES DE CONCURRENCIA ====================
+PW_SEMAPHORE = asyncio.Semaphore(3)
+
+# ==================== FRECUENCIA DINÁMICA POR PORTAL ====================
 MAU_LEVELS = {
-    'Computrabajo': 1, 'Laborum': 1, 'LinkedIn': 1, 'Jooble': 1,
-    'Chiletrabajos': 6, 'Opcionempleo': 6, 'Adecco': 6, 'Trabajando': 6, 'Buscojobs': 6, 'ManpowerChile': 6,
-    'Reqlut': 48, 'Robert Walters': 48, 'Robert Half': 48, 'Michael Page': 48, 'Prácticas para Chile': 48, 'Trabaja en el Estado': 48, 'Trovit': 48, 'UnMejorEmpleo': 48, 'Workana': 48
+    'LinkedIn': 15, 'Computrabajo': 15, 'Laborum': 20, 'Buscojobs': 20,
+    'Chiletrabajos': 30, 'Opcionempleo': 30, 'Adecco': 40, 'Trabajando': 40,
+    'Jooble': 45, 'Reqlut': 60, 'Trovit': 60, 'UnMejorEmpleo': 60,
+    'Robert Walters': 180, 'Robert Half': 180, 'Michael Page': 240,
+    'ManpowerChile': 240, 'Randstad': 180, 'Workana': 120,
+    'Prácticas para Chile': 240, 'Trabaja en el Estado': 180,
+    'ADP Servicio Civil': 240,
 }
-# LISTA DE PORTALES (tu código completo, pégalo tal cual)
+
+# ==================== LISTA COMPLETA DE PORTALES ====================
 portals = [ 
-  {"name": "Robert Walters", "url": "https://www.robertwalters.cl/vacantes.html", "use_browser": True, # Solo cambia use_browser a True si no lo tiene"selector": "div.search-result", "active": True,
+    {"name": "Robert Walters", "url": "https://www.robertwalters.cl/vacantes.html", "use_playwright": True, "selector": "div.search-result", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('.search-result-title h3 a').get_text(strip=True) if offer.select_one('.search-result-title h3 a') else "Sin título",
          company="Robert Walters",
@@ -38,7 +61,7 @@ portals = [
          portal_logo="Sin logo",
          source="Robert Walters"
      )},
-    {"name": "Opcionempleo", "url": "https://www.opcionempleo.cl/trabajo?s=&l=Chile&start=0", "use_browser": True, "selector": "article.job.clicky", "active": True,
+     {"name": "Opcionempleo", "url": "https://www.opcionempleo.cl/trabajo?s=&l=Chile&start=0", "use_playwright": True, "selector": "article.job.clicky", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('h2 a').get_text(strip=True) if offer.select_one('h2 a') else "Sin título",
          company=offer.select_one('p.company').get_text(strip=True) if offer.select_one('p.company') else "Sin empresa",
@@ -56,7 +79,8 @@ portals = [
          portal_logo="Sin logo",
          source="Opcionempleo"
      )},
-    {"name": "Reqlut", "url": "https://reqlut.com/trabajo/trabajos-en-chile?Search%5Bterms%5D=CHILE&page=1", "use_browser": True, "selector": ".job_offer_list.row", "active": True,
+
+    {"name": "Reqlut", "url": "https://reqlut.com/trabajo/trabajos-en-chile?Search%5Bterms%5D=CHILE&page=1", "use_playwright": True, "selector": ".job_offer_list.row", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('h2.fz16 span[itemprop="title"]').get_text(strip=True) if offer.select_one('h2.fz16 span[itemprop="title"]') else "Sin título",
          company=offer.select_one('span[itemprop="name"] a').get_text(strip=True) if offer.select_one('span[itemprop="name"] a') else "Sin empresa",
@@ -74,7 +98,8 @@ portals = [
          portal_logo="Sin logo",
          source="Reqlut"
      )},
-    {"name": "Chiletrabajos", "url": "https://www.chiletrabajos.cl/encuentra-un-empleo", "use_browser": True, "selector": ".job-item.with-thumb.destacado.no-hover", "active": True,
+
+    {"name": "Chiletrabajos", "url": "https://www.chiletrabajos.cl/encuentra-un-empleo", "use_playwright": True, "selector": ".job-item.with-thumb.destacado.no-hover", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('h2.title a.font-weight-bold').get_text(strip=True) if offer.select_one('h2.title a.font-weight-bold') else "Sin título",
          company=offer.select_one('h3.meta').contents[0].strip().rstrip(',') if offer.select_one('h3.meta') and offer.select_one('h3.meta').contents else "Sin empresa",
@@ -92,7 +117,8 @@ portals = [
          portal_logo="Sin logo",
          source="Chiletrabajos"
      )},
-    {"name": "Computrabajo", "url": "https://cl.computrabajo.com/trabajo-de-chile", "use_browser": True, "selector": "article.box_offer", "active": True,
+
+    {"name": "Computrabajo", "url": "https://cl.computrabajo.com/trabajo-de-chile", "use_playwright": True, "selector": "article.box_offer", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('.fs18.fwB.prB a.js-o-link.fc_base').get_text(strip=True) if offer.select_one('.fs18.fwB.prB a.js-o-link.fc_base') else "Sin título",
          company=offer.select_one('p.dFlex.vm_fx.fs16.fc_base.mt5 a.fc_base.t_ellipsis').get_text(strip=True) if offer.select_one('p.dFlex.vm_fx.fs16.fc_base.mt5 a.fc_base.t_ellipsis') else "Sin empresa",
@@ -110,7 +136,8 @@ portals = [
          portal_logo="Sin logo",
          source="Computrabajo"
      )},
-    {"name": "Trovit", "url": "https://empleo.trovit.cl/trabajo-en-region-de-metropolitana-de-santiago", "use_browser": True, "selector": "#wrapper_listing li div.item.item-jobs", "active": True,
+
+    {"name": "Trovit", "url": "https://empleo.trovit.cl/trabajo-en-region-de-metropolitana-de-santiago", "use_playwright": True, "selector": "#wrapper_listing li div.item.item-jobs", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('h4 a.js-item-title').text.strip() if offer.select_one('h4 a.js-item-title') else "Sin título",
          company=offer.select_one('h5 span.company span').text.strip() if offer.select_one('h5 span.company span') else "Sin empresa",
@@ -128,7 +155,8 @@ portals = [
          portal_logo="Sin logo",
          source="Trovit"
      )},
-    {"name": "Robert Half", "url": "https://www.roberthalf.com/cl/es/vacantes", "use_browser": True, "selector": "rhcl-job-card", "active": True,
+
+    {"name": "Robert Half", "url": "https://www.roberthalf.com/cl/es/vacantes", "use_playwright": True, "selector": "rhcl-job-card", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.get('headline', "Sin título"),
          company="Robert Half",
@@ -146,7 +174,8 @@ portals = [
          portal_logo="Sin logo",
          source="Robert Half"
      )},
-    {"name": "Randstad", "url": "https://www.randstad.cl/trabajos/", "use_browser": True, "selector": "li.cards__item", "active": True,
+
+    {"name": "Randstad", "url": "https://www.randstad.cl/trabajos/", "use_playwright": True, "selector": "li.cards__item", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.find('h3', class_='cards__title').a.text.strip() if offer.find('h3', class_='cards__title') else "Sin título",
          company=re.search(r'(Importante empresa.+?)(se encuentra|busca|requiere|$)', offer.find('div', class_='cards__description').text, re.I).group(1).strip() if re.search(r'(Importante empresa.+?)(se encuentra|busca|requiere|$)', offer.find('div', class_='cards__description').text, re.I) else "Sin empresa",
@@ -164,7 +193,8 @@ portals = [
          portal_logo="Sin logo",
          source="Randstad"
      )},
-    {"name": "UnMejorEmpleo", "url": "https://www.unmejorempleo.cl/empleos", "use_browser": True, "selector": "div.item-destacado, div.item-normal", "active": True,
+
+    {"name": "UnMejorEmpleo", "url": "https://www.unmejorempleo.cl/empleos", "use_playwright": True, "selector": "div.item-destacado, div.item-normal", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.find('a').get_text(strip=True) if offer.find('a') else "Sin título",
          company="Sin empresa",
@@ -182,7 +212,8 @@ portals = [
          portal_logo="Sin logo",
          source="UnMejorEmpleo"
      )},
-    {"name": "Buscojobs", "url": "https://www.buscojobs.cl/", "use_browser": True, "selector": ".ListadoSimple_ofertas__t1m2y > .row", "active": True,
+
+    {"name": "Buscojobs", "url": "https://www.buscojobs.cl/", "use_playwright": False, "selector": ".ListadoSimple_ofertas__t1m2y > .row", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('.ListadoSimple_cargo_oferta__AbkN0 > a').text.strip() if offer.select_one('.ListadoSimple_cargo_oferta__AbkN0 > a') else "Sin título",
          company=offer.select_one('.ListadoSimple_empresa_oferta__gBBOG > span').text.strip() if offer.select_one('.ListadoSimple_empresa_oferta__gBBOG > span') else "Sin empresa",
@@ -200,7 +231,8 @@ portals = [
          portal_logo="Sin logo",
          source="Buscojobs"
      )},
-    {"name": "Adecco", "url": "https://cl.computrabajo.com/adecco/empleos", "use_browser": True, "selector": "article.box_offer", "active": True,
+
+    {"name": "Adecco", "url": "https://cl.computrabajo.com/adecco/empleos", "use_playwright": True, "selector": "article.box_offer", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('.fs18.fwB.prB > a.fc_base').text.strip() if offer.select_one('.fs18.fwB.prB > a.fc_base') else "Sin título",
          company=offer.select_one('.fc_base.t_ellipsis').text.strip() if offer.select_one('.fc_base.t_ellipsis') else "Sin empresa",
@@ -218,22 +250,24 @@ portals = [
          portal_logo="Sin logo",
          source="Adecco"
      )},
-    {"name": "Laborum", "url": "https://www.laborum.cl/empleos.html", "use_browser": True, "selector": "article[data-qa='job-card']", "active": True,
- "extract_func": lambda offer, base_url: create_unified_job_offer(
-     title=offer.select_one('h2 a').get_text(strip=True) if offer.select_one('h2 a') else "Sin título",
-     company=offer.select_one('div[data-qa="job-card-company"] span').get_text(strip=True) if offer.select_one('div[data-qa="job-card-company"] span') else "Sin empresa",
-     region=loc.split(', ')[-1].strip() if (loc := offer.select_one('span[data-qa="job-card-location"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-location"]') else "") and ', ' in loc else "Sin región",
-     city=loc.split(', ')[0].strip() if ', ' in loc else "Sin ciudad",
-     comuna="Sin comuna",
-     description=offer.select_one('div[data-qa="job-card-description"]').get_text(strip=True) if offer.select_one('div[data-qa="job-card-description"]') else "Sin descripción",
-     salary=offer.select_one('span[data-qa="job-card-salary"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-salary"]') else "Sin salario",
-     date_posted=offer.select_one('span[data-qa="job-card-published-date"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-published-date"]') else "Sin fecha",
-     time_since_posted=offer.select_one('span[data-qa="job-card-published-date"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-published-date"]') else "Sin tiempo",
-     link=urljoin(base_url, offer.select_one('a[data-qa="job-card-link"]')['href']) if offer.select_one('a[data-qa="job-card-link"]') else "Sin enlace",
-     company_logo=offer.select_one('img[data-qa="job-card-company-logo"]')['src'] if offer.select_one('img[data-qa="job-card-company-logo"]') else "Sin logo",
-     source="Laborum"
- )},
-    {"name": "Trabajando", "url": "https://www.trabajando.cl/trabajo-empleo/", "use_browser": True, "selector": "div.result-box-container > div.result-box", "active": True,
+
+    {"name": "Laborum", "url": "https://www.laborum.cl/empleos.html", "use_playwright": True, "selector": "article[data-qa='job-card']", "active": True,
+     "extract_func": lambda offer, base_url: create_unified_job_offer(
+         title=offer.select_one('h2 a').get_text(strip=True) if offer.select_one('h2 a') else "Sin título",
+         company=offer.select_one('div[data-qa="job-card-company"] span').get_text(strip=True) if offer.select_one('div[data-qa="job-card-company"] span') else "Sin empresa",
+         region=loc.split(', ')[-1].strip() if (loc := offer.select_one('span[data-qa="job-card-location"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-location"]') else "") and ', ' in loc else "Sin región",
+         city=loc.split(', ')[0].strip() if ', ' in loc else "Sin ciudad",
+         comuna="Sin comuna",
+         description=offer.select_one('div[data-qa="job-card-description"]').get_text(strip=True) if offer.select_one('div[data-qa="job-card-description"]') else "Sin descripción",
+         salary=offer.select_one('span[data-qa="job-card-salary"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-salary"]') else "Sin salario",
+         date_posted=offer.select_one('span[data-qa="job-card-published-date"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-published-date"]') else "Sin fecha",
+         time_since_posted=offer.select_one('span[data-qa="job-card-published-date"]').get_text(strip=True) if offer.select_one('span[data-qa="job-card-published-date"]') else "Sin tiempo",
+         link=urljoin(base_url, offer.select_one('a[data-qa="job-card-link"]')['href']) if offer.select_one('a[data-qa="job-card-link"]') else "Sin enlace",
+         company_logo=offer.select_one('img[data-qa="job-card-company-logo"]')['src'] if offer.select_one('img[data-qa="job-card-company-logo"]') else "Sin logo",
+         source="Laborum"
+     )},
+
+    {"name": "Trabajando", "url": "https://www.trabajando.cl/trabajo-empleo/", "use_playwright": True, "selector": "div.result-box-container > div.result-box", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('h2 > a').text.strip() if offer.select_one('h2 > a') else "Sin título",
          company=offer.select_one('span.type.d-block.fs-6').text.strip() if offer.select_one('span.type.d-block.fs-6') else "Sin empresa",
@@ -251,7 +285,8 @@ portals = [
          portal_logo="Sin logo",
          source="Trabajando"
      )},
-    {"name": "Jooble", "url": "https://cl.jooble.org/SearchResult", "use_browser": True,
+
+    {"name": "Jooble", "url": "https://cl.jooble.org/SearchResult", "use_playwright": True, "selector": "li.base-card", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('h2').text.strip() if offer.select_one('h2') else "Sin título",
          company=offer.select_one('div.company').text.strip() if offer.select_one('div.company') else "Sin empresa",
@@ -269,7 +304,8 @@ portals = [
          portal_logo="Sin logo",
          source="Jooble"
      )},
-    {"name": "Workana", "url": "https://www.workana.com/es/jobs?country=CL&language=es", "use_browser": True, "selector": "div.project-item.js-project", "active": True,
+
+    {"name": "Workana", "url": "https://www.workana.com/es/jobs?country=CL&language=es", "use_playwright": True, "selector": "div.project-item.js-project", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('h2.h3.project-title a span')['title'] if offer.select_one('h2.h3.project-title a span') else "Sin título",
          company=offer.select_one('span.author-info.user-name a').text.strip() if offer.select_one('span.author-info.user-name a') else "Sin empresa",
@@ -287,7 +323,8 @@ portals = [
          portal_logo="Sin logo",
          source="Workana"
      )},
-    {"name": "Michael Page", "url": "https://www.michaelpage.cl/jobs/chile/chile", "use_browser": True, "selector": "ul > li.views-row > div.job-tile.search-job-tile", "active": True,
+
+    {"name": "Michael Page", "url": "https://www.michaelpage.cl/jobs/chile/chile", "use_playwright": True, "selector": "ul > li.views-row > div.job-tile.search-job-tile", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('div.job-title > h3 > a').text.strip() if offer.select_one('div.job-title > h3 > a') else "Sin título",
          company="Michael Page",
@@ -305,22 +342,24 @@ portals = [
          portal_logo="Sin logo",
          source="Michael Page"
      )},
-    {"name": "ManpowerChile", "url": "https://manpowerchile.zohorecruit.com/jobs/Manpowergroup", "use_browser": True, "selector": "div.job-list-item", "active": True,
- "extract_func": lambda offer, base_url: create_unified_job_offer(
-     title=offer.select_one('h3 a').get_text(strip=True) if offer.select_one('h3 a') else "Sin título",
-     company="ManpowerGroup",
-     region=loc.split(', ')[-1].strip() if (loc := offer.select_one('p.location').get_text(strip=True) if offer.select_one('p.location') else "") and ', ' in loc else "Sin región",
-     city=loc.split(', ')[0].strip() if ', ' in loc else "Sin ciudad",
-     comuna="Sin comuna",
-     description=offer.select_one('p.description').get_text(strip=True) if offer.select_one('p.description') else "Sin descripción",
-     experience=offer.select_one('span.experience').get_text(strip=True) if offer.select_one('span.experience') else "Sin experiencia",
-     salary="Sin salario",
-     date_posted=offer.select_one('span.date').get_text(strip=True) if offer.select_one('span.date') else "Sin fecha",
-     link=urljoin(base_url, offer.select_one('h3 a')['href']) if offer.select_one('h3 a') else "Sin enlace",
-     company_logo=offer.select_one('img.logo')['src'] if offer.select_one('img.logo') else "Sin logo",
-     source="ManpowerChile"
-    )},
-    {"name": "Prácticas para Chile", "url": "https://www.practicasparachile.cl/convocatorias.html", "use_browser": True, "selector": "div.items > div.item", "active": True,
+
+    {"name": "ManpowerChile", "url": "https://manpowerchile.zohorecruit.com/jobs/Manpowergroup", "use_playwright": True, "selector": "div.job-list-item", "active": True,
+     "extract_func": lambda offer, base_url: create_unified_job_offer(
+         title=offer.select_one('h3 a').get_text(strip=True) if offer.select_one('h3 a') else "Sin título",
+         company="ManpowerGroup",
+         region=loc.split(', ')[-1].strip() if (loc := offer.select_one('p.location').get_text(strip=True) if offer.select_one('p.location') else "") and ', ' in loc else "Sin región",
+         city=loc.split(', ')[0].strip() if ', ' in loc else "Sin ciudad",
+         comuna="Sin comuna",
+         description=offer.select_one('p.description').get_text(strip=True) if offer.select_one('p.description') else "Sin descripción",
+         experience=offer.select_one('span.experience').get_text(strip=True) if offer.select_one('span.experience') else "Sin experiencia",
+         salary="Sin salario",
+         date_posted=offer.select_one('span.date').get_text(strip=True) if offer.select_one('span.date') else "Sin fecha",
+         link=urljoin(base_url, offer.select_one('h3 a')['href']) if offer.select_one('h3 a') else "Sin enlace",
+         company_logo=offer.select_one('img.logo')['src'] if offer.select_one('img.logo') else "Sin logo",
+         source="ManpowerChile"
+     )},
+
+    {"name": "Prácticas para Chile", "url": "https://www.practicasparachile.cl/convocatorias.html", "use_playwright": True, "selector": "div.items > div.item", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('div.top > h4 > a').text.strip() if offer.select_one('div.top > h4 > a') else "Sin título",
          company=offer.select_one('div.top > p:not(.tipopractica)').text.strip() if offer.select_one('div.top > p:not(.tipopractica)') else "Sin empresa",
@@ -338,7 +377,8 @@ portals = [
          portal_logo="Sin logo",
          source="Prácticas para Chile"
      )},
-    {"name": "Trabaja en el Estado", "url": "https://www.trabajaenelestado.cl/", "use_browser": True, "selector": "div.items > div.item", "active": True,
+
+    {"name": "Trabaja en el Estado", "url": "https://www.trabajaenelestado.cl/", "use_playwright": True, "selector": "div.items > div.item", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('div.top > h4 > a').text.strip() if offer.select_one('div.top > h4 > a') else "Sin título",
          company=offer.select_one('div.top > p').text.strip() if offer.select_one('div.top > p') else "Sin empresa",
@@ -356,7 +396,8 @@ portals = [
          portal_logo="Sin logo",
          source="Trabaja en el Estado"
      )},
-    {"name": "ADP Servicio Civil", "url": "https://adp.serviciocivil.cl/concursos-spl/opencms/portada.html", "use_browser": True, "selector": "div.owl-item > div.items", "active": True,
+
+    {"name": "ADP Servicio Civil", "url": "https://adp.serviciocivil.cl/concursos-spl/opencms/portada.html", "use_playwright": True, "selector": "div.owl-item > div.items", "active": True,
      "extract_func": lambda offer, base_url: create_unified_job_offer(
          title=offer.select_one('div.top > h4').text.strip() if offer.select_one('div.top > h4') else "Sin título",
          company=offer.select_one('div.top > p').text.strip() if offer.select_one('div.top > p') else "Sin empresa",
@@ -374,24 +415,26 @@ portals = [
          portal_logo=offer.select_one('a.navbar-brand > img')['src'] if offer.select_one('a.navbar-brand > img') else "Sin logo",
          source="ADP Servicio Civil"
      )},
-    {"name": "LinkedIn", "url": "https://www.linkedin.com/jobs/search/?location=Chile&f_TPR=r604800", "use_browser": True, "selector": "li.base-card", "active": True,
- "extract_func": lambda offer, base_url: create_unified_job_offer(
-     title=offer.select_one('h3.base-search-card__title').get_text(strip=True) if offer.select_one('h3.base-search-card__title') else "Sin título",
-     company=offer.select_one('h4.base-search-card__subtitle a').get_text(strip=True) if offer.select_one('h4.base-search-card__subtitle a') else "Sin empresa",
-     region=loc.split(', ')[-1].strip() if (loc := offer.select_one('span.job-search-card__location').get_text(strip=True) if offer.select_one('span.job-search-card__location') else "") and ', ' in loc else "Sin región",
-     city=loc.split(', ')[0].strip() if ', ' in loc else "Sin ciudad",
-     comuna="Sin comuna",
-     country="Chile",
-     description=offer.select_one('div.base-card__full-link').get_text(strip=True) if offer.select_one('div.base-card__full-link') else "Sin descripción",
-     experience="Sin experiencia",
-     salary="Sin salario",
-     date_posted=offer.select_one('time')['datetime'] if offer.select_one('time') else "Sin fecha",
-     time_since_posted=offer.select_one('time').get_text(strip=True) if offer.select_one('time') else "Sin tiempo",
-     link=offer.select_one('a.base-card__full-link')['href'] if offer.select_one('a.base-card__full-link') else "Sin enlace",
-     company_logo=offer.select_one('img')['data-delayed-url'] if offer.select_one('img') else "Sin logo",
-     source="LinkedIn"
- )},
- ]
+
+    {"name": "LinkedIn", "url": "https://www.linkedin.com/jobs/search/?location=Chile&f_TPR=r604800", "use_playwright": True, "selector": "li.base-card", "active": True,
+     "extract_func": lambda offer, base_url: create_unified_job_offer(
+         title=offer.select_one('h3.base-search-card__title').get_text(strip=True) if offer.select_one('h3.base-search-card__title') else "Sin título",
+         company=offer.select_one('h4.base-search-card__subtitle a').get_text(strip=True) if offer.select_one('h4.base-search-card__subtitle a') else "Sin empresa",
+         region=loc.split(', ')[-1].strip() if (loc := offer.select_one('span.job-search-card__location').get_text(strip=True) if offer.select_one('span.job-search-card__location') else "") and ', ' in loc else "Sin región",
+         city=loc.split(', ')[0].strip() if ', ' in loc else "Sin ciudad",
+         comuna="Sin comuna",
+         country="Chile",
+         description=offer.select_one('div.base-card__full-link').get_text(strip=True) if offer.select_one('div.base-card__full-link') else "Sin descripción",
+         experience="Sin experiencia",
+         salary="Sin salario",
+         date_posted=offer.select_one('time')['datetime'] if offer.select_one('time') else "Sin fecha",
+         time_since_posted=offer.select_one('time').get_text(strip=True) if offer.select_one('time') else "Sin tiempo",
+         link=offer.select_one('a.base-card__full-link')['href'] if offer.select_one('a.base-card__full-link') else "Sin enlace",
+         company_logo=offer.select_one('img')['data-delayed-url'] if offer.select_one('img') else "Sin logo",
+         source="LinkedIn"
+     )},
+]
+
 def get_cache_key(portal_name):
     today = datetime.now().strftime('%Y-%m-%d')
     return os.path.join('cache', f"{portal_name}_{today}.json")
@@ -402,71 +445,119 @@ def should_scrape(portal_name):
         with open(cache_file, 'r') as f:
             cache = json.load(f)
             cache_time = datetime.fromisoformat(cache['timestamp'])
-            expire = timedelta(hours=MAU_LEVELS.get(portal_name, 6))
+            expire = timedelta(minutes=MAU_LEVELS.get(portal_name, 60))
             if (datetime.now() - cache_time) < expire:
-                logger.info(f"Cache fresco para {portal_name} – Skip")
+                logger.info(f"⏭️  {portal_name} skipped (cache fresco)")
                 return False
     return True
 
+async def log_portal(name: str, message: str, emoji: str = "🔄"):
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    print(f"{timestamp} {emoji} [{name}] {message}")
+    async with status_lock:
+        if name not in scrape_status:
+            scrape_status[name] = {}
+        scrape_status[name].update({
+            "last_log": f"{timestamp} {message}",
+            "last_updated": datetime.now().isoformat()
+        })
+
 async def scrape_portal(portal, session):
     name = portal['name']
+    async with status_lock:
+        scrape_status[name] = {"state": "starting", "jobs_saved": 0, "duration": 0, "error": None}
+
     if not should_scrape(name):
-        return name, 0, 100
+        await log_portal(name, "skipped (cache fresco)", "⏭️")
+        async with status_lock:
+            scrape_status[name]["state"] = "skipped"
+        return name, 0, 0
 
-    url = portal['url']
-    selector = portal.get('selector')
-    extract_func = portal.get('extract_func')
-    use_browser = portal.get('use_browser', False)
+    await log_portal(name, f"Iniciando usando {'Playwright' if portal.get('use_playwright') else 'Requests'}...", "🔄")
+    async with status_lock:
+        scrape_status[name]["state"] = "running"
+
+    start_time = time.time()
     max_offers = 20
+    saved = 0
 
-    for attempt in range(3):
-        try:
-            if use_browser:
-                offers, diag = await scrape_with_playwright(url, selector, extract_func, portal_name=name, max_offers=max_offers)
+    try:
+        async with PW_SEMAPHORE if portal.get('use_playwright') else asyncio.nullcontext():
+            if portal.get('use_playwright'):
+                offers, diag = await scrape_with_playwright(
+                    portal['url'], portal.get('selector'), portal.get('extract_func'),
+                    portal_name=name, max_offers=max_offers
+                )
             else:
                 headers = {"User-Agent": get_user_agent()}
                 proxy = get_proxy()
-                offers, diag = await async_scrape_requests(session, url, headers, proxy, selector, extract_func, max_offers=max_offers, portal_name=name)
-            
-            valid_offers = []
-            for j in offers:
-                if validate_offer(j):
-                    j["source"] = name
-                    if is_location(j.get("date_posted", "")):
-                        j["date_posted"] = "Sin fecha"
-                    j["date_posted"] = normalize_date_posted(j.get("date_posted", ""))
-                    j["time_since_posted"] = fix_time_since_posted(j.get("date_posted", ""))  # Fix correcto
-                    valid_offers.append(j)
-            
-            saved = 0
-            if valid_offers:
-                if upsert_job_batch(valid_offers):
-                    saved = len(valid_offers)
+                offers, diag = await async_scrape_requests(
+                    session, portal['url'], headers, proxy,
+                    portal.get('selector'), portal.get('extract_func'),
+                    max_offers=max_offers, portal_name=name
+                )
 
-            logger.info(f"{name}: {saved} guardados")
-            return name, saved, len(valid_offers) / max_offers * 100 if valid_offers else 0
-        except Exception as e:
-            logger.warning(f"Attempt {attempt+1} failed for {name}: {str(e)}")
-            if attempt == 2:
-                return name, 0, 0
+            # Early stopping + validación
+            valid_offers = []
+            duplicates_in_row = 0
+            for offer in offers:
+                if isinstance(offer, dict):  # ya es un job dict (de cache o scrape anterior)
+                    job = offer
+                else:
+                    job = portal['extract_func'](offer, portal['url']) if portal.get('extract_func') else create_unified_job_offer(source=name)
+
+                if validate_offer(job):
+                    valid_offers.append(job)
+                    if len(valid_offers) % 5 == 0:
+                        existing = supabase.table('job_offers').select('id').eq('link', job['link']).execute()
+                        if existing.data:
+                            duplicates_in_row += 1
+                            if duplicates_in_row >= 3:
+                                await log_portal(name, "Early Stopping activado", "✅")
+                                break
+                        else:
+                            duplicates_in_row = 0
+
+            if valid_offers and upsert_job_batch(valid_offers):
+                saved = len(valid_offers)
+
+        duration = int(time.time() - start_time)
+        await log_portal(name, f"terminado: {saved} jobs guardados en {duration}s", "✅")
+
+        async with status_lock:
+            scrape_status[name].update({
+                "state": "success",
+                "jobs_saved": saved,
+                "duration": duration,
+                "success_rate": round(len(valid_offers)/max_offers*100, 1) if valid_offers else 0
+            })
+        return name, saved, duration
+
+    except Exception as e:
+        await log_portal(name, f"FALLÓ: {str(e)[:100]}", "❌")
+        async with status_lock:
+            scrape_status[name].update({"state": "error", "error": str(e)[:200]})
+        return name, 0, 0
 
 async def main():
-    print("Scraping Jobs...")
-    print("=" * 60)
-    
-    active_portals = [p for p in portals if p.get('active', True)]
-    
-    async with ClientSession(connector=aiohttp.TCPConnector(limit=5)) as session:
-        tasks = [scrape_portal(p, session) for p in active_portals]
-        results = await asyncio.gather(*tasks)
-    
-    total = sum(saved for _, saved, _ in results)
-    print(f"\nSuccess! {total} JOBS SAVED in Supabase!")
-    
-    for name, saved, success_pct in results:
-        logger.info(f"{name}: {success_pct:.2f}% éxito ({saved}/20 jobs)")
+    global current_run_id
+    current_run_id = datetime.now().isoformat()
+    await log_portal("GLOBAL", "Iniciando Scrape HoundJob completo...", "🚀")
+
+    # FASE 1: Requests
+    requests_portals = [p for p in portals if p.get('active') and not p.get('use_playwright')]
+    async with ClientSession(connector=aiohttp.TCPConnector(limit=10)) as session:
+        tasks = [scrape_portal(p, session) for p in requests_portals]
+        await asyncio.gather(*tasks)
+
+    # FASE 2: Playwright
+    pw_portals = [p for p in portals if p.get('active') and p.get('use_playwright')]
+    async with ClientSession(connector=aiohttp.TCPConnector(limit=4)) as session:
+        tasks = [scrape_portal(p, session) for p in pw_portals]
+        await asyncio.gather(*tasks)
+
+    total_jobs = sum(s.get('jobs_saved', 0) for s in scrape_status.values())
+    await log_portal("GLOBAL", f"Scrape COMPLETO → {total_jobs} jobs guardados", "🎉")
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-

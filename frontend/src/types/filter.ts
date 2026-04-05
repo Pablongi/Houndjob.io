@@ -1,3 +1,4 @@
+// /frontend/types/filter.ts
 export interface FilterState {
   search: string;
   selectedCategories: Set<string>;
@@ -10,6 +11,7 @@ export interface FilterState {
   selectedJobTitles: Set<string>;
   selectedModalities: Set<string>;
   selectedExperiences: Set<string>;
+  selectedSalary: Set<string>;
 }
 
 export interface RankedItem {

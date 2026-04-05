@@ -1,9 +1,11 @@
+// /frontend/src/components/filters/SearchBar.tsx
 import React, { useState, useMemo, FormEvent, ChangeEvent } from 'react';
 import styled from 'styled-components';
 import { useAppContext } from './FilterContext';
 import { Job, Tag } from '@/types/job';
 import { FilterState } from '@/types/filter';
 import { normalizeText } from '@/logic/filterUtils';
+import { logger } from '@/utils/logger';
 
 const SearchWrapper = styled.div`
   max-width: 100%;
@@ -12,13 +14,9 @@ const SearchWrapper = styled.div`
   box-sizing: border-box;
 `;
 
-const SearchForm = styled.form`
-  position: relative;
-`;
+const SearchForm = styled.form` position: relative; `;
 
-const SearchInputWrapper = styled.div`
-  position: relative;
-`;
+const SearchInputWrapper = styled.div` position: relative; `;
 
 const SearchInput = styled.input`
   width: 100%;
@@ -30,12 +28,8 @@ const SearchInput = styled.input`
   background: var(--background);
   box-shadow: var(--shadow);
   box-sizing: border-box;
-  &:focus {
-    box-shadow: 0 0 0 2px var(--primary);
-  }
-  &::placeholder {
-    color: var(--text-light);
-  }
+  &:focus { box-shadow: 0 0 0 2px var(--primary); }
+  &::placeholder { color: var(--text-light); }
   @media (max-width: 768px) {
     height: 44px;
     padding: 0 110px 0 40px;
@@ -64,9 +58,7 @@ const SearchButton = styled.button`
   padding: 8px 16px;
   border-radius: 20px;
   transition: all 0.3s;
-  &:hover {
-    background: var(--primary-dark);
-  }
+  &:hover { background: var(--primary-dark); }
 `;
 
 const SuggestionsContainer = styled.div`
@@ -84,9 +76,7 @@ const SuggestionsContainer = styled.div`
 const SuggestionItem = styled.div`
   padding: 12px 16px;
   cursor: pointer;
-  &:hover {
-    background: var(--chip-bg);
-  }
+  &:hover { background: var(--chip-bg); }
 `;
 
 function levenshteinDistance(s: string, t: string): number {
@@ -130,6 +120,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ allJobs }) => {
     if (!searchTerm) return [];
     const normalizedSearch = normalizeText(searchTerm);
     let matches = allTerms.filter((term: string) => normalizeText(term).includes(normalizedSearch));
+
     if (matches.length < 8) {
       const closest = allTerms
         .map((term: string) => ({ term, dist: levenshteinDistance(normalizedSearch, normalizeText(term)) }))
@@ -146,24 +137,33 @@ const SearchBar: React.FC<SearchBarProps> = ({ allJobs }) => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearchTerm(newValue);
+
     if (debounceTimeout) clearTimeout(debounceTimeout);
+
     const timeout = setTimeout(() => {
+      logger.actionStart(`Búsqueda full-text: "${newValue}"`);
       setFilters((prev: FilterState) => ({ ...prev, search: newValue }));
       setShowSuggestions(!!newValue);
+      logger.actionEnd(`Búsqueda full-text: "${newValue}"`, true);
     }, 300);
+
     setDebounceTimeout(timeout);
   };
 
   const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
+    logger.actionStart(`Submit búsqueda: "${searchTerm}"`);
     setFilters((prev: FilterState) => ({ ...prev, search: searchTerm }));
     setShowSuggestions(false);
+    logger.actionEnd(`Submit búsqueda: "${searchTerm}"`, true);
   };
 
   const handleSuggestionClick = (suggestion: string) => {
+    logger.actionStart(`Selección de sugerencia: "${suggestion}"`);
     setSearchTerm(suggestion);
     setFilters((prev: FilterState) => ({ ...prev, search: suggestion }));
     setShowSuggestions(false);
+    logger.actionEnd(`Selección de sugerencia: "${suggestion}"`, true);
   };
 
   return (
@@ -182,6 +182,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ allJobs }) => {
             />
             <SearchIcon>🔍</SearchIcon>
           </SearchInputWrapper>
+
           {showSuggestions && suggestions.length > 0 && (
             <SuggestionsContainer role="listbox" aria-label="Sugerencias de búsqueda">
               {suggestions.map((suggestion: string, index: number) => (
@@ -196,6 +197,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ allJobs }) => {
               ))}
             </SuggestionsContainer>
           )}
+
           <SearchButton type="submit" aria-label="Buscar">
             Buscar
           </SearchButton>

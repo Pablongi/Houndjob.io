@@ -1,40 +1,40 @@
+// /frontend/src/main.tsx
 import * as ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './App.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { supabase } from './supabase';
+import { logger } from '@/utils/logger';   // ← IMPORTANTE: esta línea faltaba
 
-if (import.meta.env.MODE !== 'production') {
-  console.log('[Main Diagnostic] [STEP 1] Iniciando carga de la aplicación...');
-}
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  if (import.meta.env.MODE !== 'production') {
-    console.error('[Main Diagnostic] [STOP] ERROR: Elemento #root no encontrado en index.html');
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Listener de login (con logger seguro)
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session?.user) {
+    logger.success('🔥 USUARIO LOGUEADO:', session.user.email);
+  } else {
+    logger.info('🔥 AUTH EVENT:', event);
   }
-} else {
-  if (import.meta.env.MODE !== 'production') {
-    console.log('[Main Diagnostic] [STEP 2] Elemento #root encontrado, iniciando renderizado...');
-  }
-}
+});
 
-const queryClient = new QueryClient();
-
-const root = ReactDOM.createRoot(rootElement!);
-if (import.meta.env.MODE !== 'production') {
-  console.log('[Main Diagnostic] [STEP 3] Creando raíz de ReactDOM...');
-}
-
-const isDev = import.meta.env.MODE === 'development';
+const root = ReactDOM.createRoot(document.getElementById('root')!);
 
 root.render(
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter>
       <App />
     </BrowserRouter>
+    <ReactQueryDevtools initialIsOpen={false} />
   </QueryClientProvider>
 );
 
-if (import.meta.env.MODE !== 'production') {
-  console.log('[Main Diagnostic] [STEP 4] Renderizado iniciado.');
-}
+logger.success('[Main] Aplicación cargada correctamente');

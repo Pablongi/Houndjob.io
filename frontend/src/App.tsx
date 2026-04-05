@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom';
+// /frontend/src/App.tsx
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
@@ -6,11 +7,61 @@ import { AppProvider, useAppContext } from '@/components/filters/FilterContext';
 import JobList from '@/components/jobs/JobList';
 import SearchBar from '@/components/filters/SearchBar';
 import FiltersPanel from '@/components/filters/FiltersPanel';
-import { useJobsWithCache as useJobs } from '@/hooks/useJobsWithCache';
 import SelectedFilters from '@/components/filters/SelectedFilters';
+
+// ←←← NUEVOS IMPORTS PARA LAS NUEVAS PÁGINAS
+import Favorites from '@/pages/Favorites';
+import Profile from '@/pages/Profile';
+
+import { useJobsWithCache as useJobs } from '@/hooks/useJobsWithCache';
 import { FilterState } from '@/types/filter';
 import { supabase } from '@/supabase';
 import { useState, useEffect } from 'react';
+import { logger } from '@/utils/logger';
+
+// ==================== CALLBACK CORREGIDO CON IIFE (SIN ERROR TS) ====================
+const Callback = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    console.log('🔄 Callback montado - Intentando recuperar sesión...');
+
+    (async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      console.log('📡 getSession() resultado:', { 
+        hasSession: !!data.session, 
+        user: data.session?.user?.email || 'null',
+        error: error?.message 
+      });
+
+      if (data.session) {
+        console.log('✅ SESIÓN RECUPERADA CORRECTAMENTE - Usuario:', data.session.user.email);
+        navigate('/', { replace: true });
+        return;
+      }
+
+      console.log('⚠️ No hay sesión inmediata, reintentando...');
+      const { data: retryData } = await supabase.auth.refreshSession();
+      
+      if (retryData.session) {
+        console.log('✅ SESIÓN RECUPERADA EN RETRY');
+        navigate('/', { replace: true });
+      } else {
+        console.log('❌ Falló incluso el retry');
+        navigate('/', { replace: true });
+      }
+    })();
+  }, [navigate]);
+
+  return (
+    <div style={{ padding: '80px 20px', textAlign: 'center', fontSize: '18px', color: '#09BB07' }}>
+      Procesando login con Google...<br />
+      <small>Por favor espera 2-3 segundos</small>
+    </div>
+  );
+};
+// =====================================================================
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -129,89 +180,69 @@ const ClearAllButton = styled.button`
 `;
 
 const AppContent = () => {
-  console.log('App rendering');  // Added debug log
-
   const { jobs, loadMoreJobs, hasMore, loading, error, refetch } = useJobs();
-  const { filters, setFilters, user, setUser } = useAppContext();
+  const { filters, setFilters, user } = useAppContext();
   const [isFiltersMinimized, setIsFiltersMinimized] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(
     (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system'
   );
 
-  const signInWithGoogle = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-      if (error) console.error('[Diagnostic] Auth error:', error);
-    } catch (e) {
-      console.error('[Diagnostic] SignIn error:', e);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) console.error('[Diagnostic] SignOut error:', error);
-    } catch (e) {
-      console.error('[Diagnostic] SignOut error:', e);
-    }
-  };
+  useEffect(() => {
+    console.log('👤 Estado de usuario actual en AppContent:', user?.email || 'NINGUNO');
+  }, [user]);
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      applyTheme(theme);
-    };
+    const handleChange = () => applyTheme(theme);
     mediaQuery.addEventListener('change', handleChange);
     applyTheme(theme);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
   useEffect(() => {
-    // Realtime notifs for new jobs
     const channel = supabase
       .channel('job_offers_changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'job_offers' }, (payload: { new: { title: string } }) => {
-        alert(`Nuevo job: ${payload.new.title}`);  // Simple notif
-        refetch();  // Refresh jobs
-      })
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'job_offers' },
+        (payload) => {
+          console.log('📨 Nuevo empleo recibido:', payload.new.title);
+          refetch();
+        }
+      )
       .subscribe();
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [refetch]);
 
   const applyTheme = (theme: 'light' | 'dark' | 'system') => {
-    let effectiveTheme: 'light' | 'dark' = 'light';
-    if (theme === 'system') {
-      effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    } else {
-      effectiveTheme = theme;
-    }
-    document.documentElement.setAttribute('data-theme', effectiveTheme);
+    const effective = theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : theme;
+    document.documentElement.setAttribute('data-theme', effective);
   };
 
-  const toggleTheme = () => {
-    setTheme((prev: 'light' | 'dark' | 'system') => (prev === 'light' ? 'dark' : prev === 'dark' ? 'system' : 'light'));
-  };
-
-  const resetFilters = () => {
-    setFilters({
-      search: '',
-      selectedCategories: new Set<string>(),
-      selectedSubcategories: new Set<string>(),
-      selectedTags: new Set<string>(),
-      selectedPortals: new Set<string>(),
-      selectedCountries: new Set<string>(),
-      selectedRegions: new Set<string>(),
-      company: '',
-      selectedJobTitles: new Set<string>(),
-      selectedModalities: new Set<string>(),
-      selectedExperiences: new Set<string>(),
-    });
-    refetch();
-  };
+  // Dentro de AppContent
+const resetFilters = () => {
+  setFilters({
+    search: '',
+    selectedCategories: new Set<string>(),
+    selectedSubcategories: new Set<string>(),
+    selectedTags: new Set<string>(),
+    selectedPortals: new Set<string>(),
+    selectedCountries: new Set<string>(),
+    selectedRegions: new Set<string>(),
+    company: '',
+    selectedJobTitles: new Set<string>(),
+    selectedModalities: new Set<string>(),
+    selectedExperiences: new Set<string>(),
+    selectedSalary: new Set<string>(),     // ←←← ESTO FALTABA
+  });
+  refetch();
+};
 
   const handleFilter = (newFilters: Partial<FilterState>) => {
     setFilters((prev: FilterState) => ({ ...prev, ...newFilters }));
@@ -220,7 +251,7 @@ const AppContent = () => {
 
   return (
     <AppContainer>
-      <Header toggleTheme={toggleTheme} currentTheme={theme} user={user} signInWithGoogle={signInWithGoogle} signOut={signOut} />
+      <Header />
       <MainContent>
         <LayoutWrapper>
           <SearchBox>
@@ -236,9 +267,7 @@ const AppContent = () => {
             </FloatingBar>
           )}
           <JobsBox>
-            <Routes>
-              <Route path="/" element={<JobList jobs={jobs} loadMoreJobs={loadMoreJobs} hasMore={hasMore} loading={loading} error={error} />} />
-            </Routes>
+            <JobList jobs={jobs} loadMoreJobs={loadMoreJobs} hasMore={hasMore} loading={loading} error={error} />
           </JobsBox>
         </LayoutWrapper>
       </MainContent>
@@ -247,12 +276,19 @@ const AppContent = () => {
   );
 };
 
-const App = () => {
-  return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  );
-};
+const App = () => (
+  <AppProvider>
+    <Routes>
+      <Route path="/" element={<AppContent />} />
+      <Route path="/auth/callback" element={<Callback />} />
+
+      {/* ←←← NUEVAS RUTAS AGREGADAS */}
+      <Route path="/favoritos" element={<Favorites />} />
+      <Route path="/perfil" element={<Profile />} />
+      <Route path="/terminos" element={<div className="p-12 prose mx-auto max-w-3xl"><h1>Términos y Condiciones</h1><p>Texto legal aquí...</p></div>} />
+      <Route path="/privacidad" element={<div className="p-12 prose mx-auto max-w-3xl"><h1>Política de Privacidad</h1><p>Texto legal aquí...</p></div>} />
+    </Routes>
+  </AppProvider>
+);
 
 export default App;

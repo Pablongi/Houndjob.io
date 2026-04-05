@@ -18,7 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "ignoreDeprecations": "6.0"     // ←←← Silencia los warnings de moduleResolution y baseUrl
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite-env.d.ts"]
 }

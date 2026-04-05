@@ -1,10 +1,13 @@
-// src/components/common/Header.tsx
+// /frontend/src/components/common/Header.tsx
 import { NavLink } from 'react-router-dom';
 import styled from 'styled-components';
 import { useState } from 'react';
+import { supabase } from '@/supabase';
+import { useAppContext } from '@/components/filters/FilterContext';
+import { logger } from '@/utils/logger';
 
 const HeaderContainer = styled.header`
-  background: var(--header-gradient); /* Updated to use gradient */
+  background: var(--header-gradient);
   color: var(--text);
   box-shadow: var(--shadow);
   padding: 8px 16px;
@@ -14,11 +17,7 @@ const HeaderContainer = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 48px; /* Aumentado para mobile-friendliness */
-  @media (max-width: 768px) {
-    height: auto;
-    padding: 8px;
-  }
+  height: 48px;
 `;
 
 const LogoSection = styled.div`
@@ -60,49 +59,74 @@ const NavButton = styled.button`
   font-size: 14px;
   cursor: pointer;
   padding: 0 8px;
-  &:hover {
-    text-decoration: underline;
-  }
+  &:hover { text-decoration: underline; }
 `;
 
-const Hamburger = styled.button`
-  display: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 20px;
-  color: var(--primary);
-  @media (max-width: 768px) {
-    display: block;
-  }
-`;
-
-interface HeaderProps {
-  toggleTheme: () => void;
-  currentTheme: 'light' | 'dark' | 'system';
-  user: any; // Adjust type as needed
-  signInWithGoogle: () => void;
-  signOut: () => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ toggleTheme, currentTheme, user, signInWithGoogle, signOut }) => {
+const Header: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, setUser } = useAppContext();
+
+  logger.info('📌 Header renderizado');
+
+  const handleDevLogin = () => {
+    logger.actionStart('Login DEV');
+    const fakeUser = {
+      id: 'dev-user-123',
+      email: 'dev@houndjob.cl',
+      user_metadata: { full_name: 'Usuario Desarrollo' }
+    } as any;
+    setUser(fakeUser);
+    logger.actionEnd('Login DEV', true);
+    alert('✅ Modo desarrollo: Login simulado activado');
+  };
+
+  const handleLogin = async () => {
+    logger.actionStart('Login con Google');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: 'http://localhost:3000/auth/callback' },
+    });
+    if (error) {
+      logger.actionEnd('Login con Google', false, error.message);
+      alert('Error Google: ' + error.message);
+    } else {
+      logger.actionEnd('Login con Google', true);
+    }
+  };
+
+  const handleLogout = async () => {
+    logger.actionStart('Logout');
+    await supabase.auth.signOut();
+    setUser(null);
+    logger.actionEnd('Logout', true);
+    window.location.reload();
+  };
 
   return (
-    <HeaderContainer role="banner" aria-label="Encabezado de HoundJob">
+    <HeaderContainer>
       <LogoSection>
         <NavLink to="/">
-          <LogoImg src="/logos/Houndjob_logo.png" alt="Logo de HoundJob" loading="lazy" />
+          <LogoImg 
+            src="/hound/HoundJob LOGO.png" 
+            alt="HoundJob" 
+          />
         </NavLink>
         <Slogan>Encuentra tu empleo ideal en segundos</Slogan>
       </LogoSection>
-      <Hamburger onClick={() => setMenuOpen(!menuOpen)} aria-label="Menú móvil">
-        ☰
-      </Hamburger>
-      <NavMenu open={menuOpen} role="navigation" aria-label="Menú principal">
-        <NavButton aria-label="Perfil">Perfil</NavButton>
-        <NavButton aria-label="Favoritos">Favoritos</NavButton>
-        <NavButton onClick={user ? signOut : signInWithGoogle}>{user ? 'Logout' : 'Login Google'}</NavButton>
+
+      <NavMenu open={menuOpen}>
+        <NavButton>Perfil</NavButton>
+        <NavButton>Favoritos</NavButton>
+        
+        {!user && (
+          <NavButton onClick={handleDevLogin} style={{ color: '#f59e0b' }}>
+            👷 Login DEV
+          </NavButton>
+        )}
+
+        <NavButton onClick={user ? handleLogout : handleLogin}>
+          {user ? `Logout (${user.email})` : 'Login Google'}
+        </NavButton>
       </NavMenu>
     </HeaderContainer>
   );

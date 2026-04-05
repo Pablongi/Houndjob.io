@@ -14,3 +14,5 @@ playwright
 flask==2.3.3
 gunicorn==22.0.0      # ← CAMBIO AQUÍ (nueva versión, más estable)
 setuptools            # ← Aseguramos que esté
+flask-cors
+flask-limiter

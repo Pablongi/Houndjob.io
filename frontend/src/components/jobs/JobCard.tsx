@@ -1,39 +1,24 @@
+// /frontend/src/components/jobs/JobCard.tsx
 import { memo, useState } from 'react';
-import type { ChangeEvent } from 'react';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
-import { Job, Tag } from '@/types/job';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Job } from '@/types/job';
 import { useAppContext } from '@/components/filters/FilterContext';
-import { FilterButton } from '@/components/filters/FilterCategory';
-import { normalizeText } from '@/logic/filterUtils';
+import { portalToLogo } from '@/constants';
 import { supabase } from '@/supabase';
-import { FilterState } from '@/types/filter';
+import { logger } from '@/utils/logger';
 
 const Card = styled(motion.div)`
   background: var(--card-gradient);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 16px;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   cursor: pointer;
-  transition: box-shadow 0.3s ease;
-  &:hover {
-    box-shadow: var(--card-hover-shadow);
-  }
-  min-height: 300px;
-  height: auto;
-  @media (max-width: 768px) {
-    padding: 12px;
-    min-height: 280px;
-  }
-`;
-
-const TopSection = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover { box-shadow: var(--card-hover-shadow); }
 `;
 
 const TitleLink = styled.a`
@@ -41,271 +26,188 @@ const TitleLink = styled.a`
   font-weight: 600;
   color: var(--text);
   text-decoration: none;
-  &:hover {
-    color: var(--primary);
-  }
-`;
-
-const LocationSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-light);
-`;
-
-const CountryFlag = styled.img`
-  width: 16px;
-  height: 16px;
-  loading: lazy;
+  line-height: 1.3;
+  &:hover { color: var(--primary); }
 `;
 
 const CompanySection = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 14px;
+  color: var(--primary);
 `;
 
 const CompanyLogo = styled.img`
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  object-fit: cover;
-  loading: lazy;
+  object-fit: contain;
+  background: white;
+  padding: 2px;
 `;
 
-const CompanyName = styled.p`
-  font-size: 14px;
-  color: var(--primary);
-  cursor: pointer;
-  &:hover {
-    text-decoration: underline;
-  }
+const Location = styled.div`
+  font-size: 12px;
+  color: var(--text-light);
+`;
+
+const Description = styled.p`
+  font-size: 13px;
+  color: var(--text-light);
+  line-height: 1.5;
+  max-height: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
 `;
 
 const PublishedDate = styled.p`
   font-size: 12px;
   color: var(--text-light);
+  font-weight: 500;
 `;
 
-const TagContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+const PortalLogo = styled.img`
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
 `;
 
-const BottomSection = styled.div`
+const BottomActions = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: auto;
 `;
 
-const BottomLeft = styled.div``;
-
-const BottomRight = styled.div`
-  display: flex;
-  gap: 8px;
+const ActionButton = styled.button<{ $active?: boolean }>`
+  background: ${({ $active }) => ($active ? 'var(--primary)' : 'transparent')};
+  color: ${({ $active }) => ($active ? '#fff' : 'var(--text)')};
+  border: 1px solid ${({ $active }) => ($active ? 'var(--primary)' : 'var(--border)')};
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: var(--primary); color: #fff; }
 `;
 
-const ActionButton = styled.button`
+const ExpandButton = styled.button`
   background: none;
   border: none;
-  cursor: pointer;
-  font-size: 12px;
   color: var(--primary);
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
-const PortalButton = styled(ActionButton)`
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
 `;
 
-const PortalImg = styled.img`
-  width: 16px;
-  height: 16px;
-  loading: lazy;
-`;
+const JobCard = memo(({ job }: { job: Job }) => {
+  const { user } = useAppContext();
+  const [isSaved, setIsSaved] = useState(false);
+  const [views, setViews] = useState<number>(job.attributes.views ?? job.views ?? 0);
+  const [expanded, setExpanded] = useState(false);
 
-const CategorySection = styled.div`
-  display: flex;
-  gap: 4px;
-`;
+  const title = job.attributes.title || 'Sin título';
+  const company = job.attributes.company || 'Sin empresa';
+  const location = job.attributes.region ? `${job.attributes.region}, Chile` : 'Chile';
 
-const SubcategorySection = styled(CategorySection)``;
-
-const countryToFlag: { [key: string]: string } = {
-  Chile: '/flags/chile_flag.png',
-  Argentina: '/flags/argentina_flag.png',
-  Colombia: '/flags/colombia_flag.png',
-  Mexico: '/flags/mexico_flag.png',
-  Peru: '/flags/peru_flag.png',
-};
-
-const portalToLogo: { [key: string]: string } = {
-  'get on board': '/portals/getonboard.png',
-  'bne.cl': '/portals/Portal-BNE_logo.png',
-  'trabajoconsentido': '/portals/Trabajoconsentido_logo.png',
-};
-
-interface JobCardProps {
-  job: Job;
-}
-
-const JobCard = memo<JobCardProps>(({ job }) => {
-  const { setFilters, user } = useAppContext();
-  const [comment, setComment] = useState<string>('');
-
-  if (import.meta.env.MODE !== 'production') {
-    console.log('Rendering JobCard for job ID:', job.id);
+  // ←←← FIX: Limpiar URL de logo (quitar doble https)
+  let companyLogo = job.attributes.logo_url || '/logos/company-default.png';
+  if (companyLogo.includes('https:https//')) {
+    companyLogo = companyLogo.replace('https:https//', 'https://');
   }
 
-  const date = new Date(job.attributes.creation_date);
-  const timestamp = isNaN(date.getTime()) ? Date.now() : date.getTime();
-  const daysAgo = Math.floor((Date.now() - timestamp) / (1000 * 3600 * 24));
-  const publishedText = `Posted ${daysAgo} days ago`;
+  const link = job.attributes.publicUrl || job.publicUrl || '#';
+  const portal = job.attributes.portal || '';
+  const portalLogoSrc = portalToLogo[portal] || '/portals/default.svg';
 
-  const uniqueCategories = [...new Set(
-    job.tags
-      .map((tag: Tag) => tag.categoría ?? '')
-      .filter((category: string) => category !== '')
-  )].slice(0, 2);
+  let postedText = 'Hace poco';
+  const dateToUse = job.attributes.date_posted || job.attributes.creation_date;
+  if (dateToUse) {
+    const daysAgo = Math.floor((Date.now() - new Date(dateToUse).getTime()) / 86400000);
+    postedText = daysAgo === 0 ? 'Hoy' : daysAgo === 1 ? 'Ayer' : `Hace ${daysAgo} días`;
+  }
 
-  const uniqueSubcategories = [...new Set(
-    job.tags
-      .map((tag: Tag) => tag.subcategoría ?? '')
-      .filter((subcategory: string) => subcategory !== '')
-  )].slice(0, 3);
-
-  const applyFilter = (type: 'category' | 'subcategory' | 'tag' | 'company', value: string) => {
-    setFilters((prev: FilterState) => {
-      const newFilters = { ...prev };
-      if (type === 'company') {
-        newFilters.company = value;
-      } else {
-        const setKey = type === 'category' ? 'selectedCategories' :
-          type === 'subcategory' ? 'selectedSubcategories' : 'selectedTags';
-        const currentSet = new Set(newFilters[setKey]);
-        currentSet.add(value);
-        newFilters[setKey] = currentSet;
-      }
-      return newFilters;
+  const toggleFavorite = async () => {
+    if (!user) {
+      alert('Para guardar empleos en favoritos debes iniciar sesión con Google');
+      return;
+    }
+    logger.actionStart(`Guardando favorito job ${job.id}`);
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ job_id: job.id }),
     });
-  };
 
-  const searchSimilar = () => {
-    const similarSearch = [...new Set(job.tags.map((tag: Tag) => tag.tag))].join(' ');
-    setFilters((prev: FilterState) => ({ ...prev, search: similarSearch }));
-  };
-
-  const addFavorite = async () => {
-    if (!user) return;
-    try {
-      await supabase.from('favorites').insert({ job_id: job.id, user_id: user.id });
-      console.log('Favorito added');
-    } catch (e) {
-      console.error('[Diagnostic] Fav error:', e);
+    if (res.ok) {
+      const data = await res.json();
+      setIsSaved(data.status === 'added');
+      if (data.status === 'added') setViews(v => v + 1);
+      logger.actionEnd(`Guardando favorito job ${job.id}`, true);
     }
   };
 
-  const addComment = async () => {
-    if (!user || !comment) return;
-    try {
-      await supabase.from('comments').insert({ job_id: job.id, user_id: user.id, text: comment });
-      setComment('');
-      console.log('Comment added');
-    } catch (e) {
-      console.error('[Diagnostic] Comment error:', e);
-    }
+  const handleExpand = () => {
+    setExpanded(!expanded);
+    if (!expanded) setViews(v => v + 1);
+    logger.actionStart(`Expandiendo card → ${title}`);
   };
-
-  const normalizedPortal = normalizeText(job.attributes.portal).toLowerCase();
-  const logoSrc = portalToLogo[normalizedPortal] || '/portals/Trabajoconsentido_logo.png';
 
   return (
-    <Card role="article" aria-label={`Oferta de empleo: ${job.attributes.title}`}>
-      <TopSection>
-        <TitleLink href={job.publicUrl} target="_blank" rel="noopener noreferrer">{job.attributes.title}</TitleLink>
-        <LocationSection>
-          {job.attributes.country && countryToFlag[job.attributes.country] && <CountryFlag src={countryToFlag[job.attributes.country]} alt={`Bandera de ${job.attributes.country}`} />}
-          {job.attributes.region ? `${job.attributes.region}, ` : ''}{job.attributes.country}
-        </LocationSection>
-      </TopSection>
+    <Card whileHover={{ y: -4 }} onClick={handleExpand}>
+      <TitleLink href={link} target="_blank" rel="noopener noreferrer">
+        {title}
+      </TitleLink>
+
       <CompanySection>
-        {job.attributes.logo_url && <CompanyLogo src={job.attributes.logo_url} alt={`Logo de ${job.attributes.company}`} />}
-        <CompanyName onClick={() => applyFilter('company', job.attributes.company)}>{job.attributes.company}</CompanyName>
+        <CompanyLogo src={companyLogo} alt={company} />
+        <span>{company}</span>
       </CompanySection>
-      {uniqueCategories.length > 0 && (
-        <CategorySection>
-          {uniqueCategories.map((cat: string, index: number) => (
-            <FilterButton
-              key={`${cat}-${index}`}
-              active={false}
-              onClick={() => applyFilter('category', cat)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {cat}
-            </FilterButton>
-          ))}
-        </CategorySection>
-      )}
-      {uniqueSubcategories.length > 0 && (
-        <SubcategorySection>
-          {uniqueSubcategories.map((sub: string, index: number) => (
-            <FilterButton
-              key={`${sub}-${index}`}
-              active={false}
-              onClick={() => applyFilter('subcategory', sub)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {sub}
-            </FilterButton>
-          ))}
-        </SubcategorySection>
-      )}
-      <TagContainer>
-        {job.tags.slice(0, 5).map((t: Tag, index: number) => (
-          t.tag && (
-            <FilterButton
-              key={`${t.tag}-${index}`}
-              active={false}
-              onClick={() => applyFilter('tag', t.tag)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {t.tag}
-            </FilterButton>
-          )
-        ))}
-      </TagContainer>
-      <BottomSection>
-        <BottomLeft>
-          <PublishedDate>{publishedText}</PublishedDate>
-        </BottomLeft>
-        <BottomRight>
-          <ActionButton aria-label="Guardar">Guardar</ActionButton>
-          <ActionButton aria-label="Compartir">Compartir</ActionButton>
-          <ActionButton onClick={searchSimilar} aria-label="Buscar similares">Buscar similares</ActionButton>
-          <PortalButton aria-label="Portal">
-            <PortalImg src={logoSrc} alt={`Logo de ${job.attributes.portal}`} />
-          </PortalButton>
-          {user && (
-            <ActionButton onClick={addFavorite}>Favorito</ActionButton>
-          )}
-          <input
-            type="text"
-            value={comment}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setComment(e.target.value)}
-            placeholder="Comentario"
-          />
-          <ActionButton onClick={addComment}>Comentar</ActionButton>
-        </BottomRight>
-      </BottomSection>
+
+      <Location>🇨🇱 {location}</Location>
+
+      <PublishedDate>{postedText}</PublishedDate>
+
+      <p className="text-xs text-gray-500">👁 {views} vistas</p>
+
+      <Description>{job.description || 'Sin descripción disponible'}</Description>
+
+      <BottomActions>
+        <PortalLogo src={portalLogoSrc} alt={portal} loading="lazy" />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <ActionButton onClick={(e) => { e.stopPropagation(); toggleFavorite(); }} $active={isSaved}>
+            {isSaved ? '❤️ Guardado' : 'Guardar'}
+          </ActionButton>
+          <ActionButton onClick={(e) => e.stopPropagation()}>Compartir</ActionButton>
+        </div>
+      </BottomActions>
+
+      <ExpandButton onClick={(e) => { e.stopPropagation(); handleExpand(); }}>
+        {expanded ? '▲ Menos info' : '▼ Más información'}
+      </ExpandButton>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <p style={{ fontSize: '13px', marginTop: '8px', color: 'var(--text-light)' }}>
+              {job.description || 'Información adicional no disponible en este momento.'}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Card>
   );
 });

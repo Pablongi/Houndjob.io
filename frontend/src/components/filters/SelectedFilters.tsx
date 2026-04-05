@@ -1,6 +1,8 @@
+// /frontend/src/components/filters/SelectedFilters.tsx
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FilterState } from '@/types/filter';
+import { logger } from '@/utils/logger';
 
 const SelectedContainer = styled.div`
   display: flex;
@@ -47,6 +49,8 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({ filters, onFilter }) 
   filters.selectedExperiences.forEach((e: string) => selected.push({ type: 'experience', value: e }));
 
   const removeSelected = (type: string, value: string) => {
+    logger.actionStart(`Eliminando chip → ${type}: ${value}`);
+
     const newFilters: Partial<FilterState> = {};
     if (type === 'company') {
       newFilters.company = '';
@@ -67,6 +71,7 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({ filters, onFilter }) 
       }
     }
     onFilter(newFilters);
+    logger.actionEnd(`Eliminando chip → ${type}: ${value}`, true);
   };
 
   return (

@@ -1,23 +1,20 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.env
-backend/.env
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.vite/
 
-# Node
-node_modules/
+# Backend
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/cache/
+backend/venv/
+backend/*.log
+
+# General
 .DS_Store
 *.log
-
-# Data/ML
-*.csv
-backend/cache/
-backend/homologated_jobs_advanced.csv
-backend/jobs_data.csvbackend/backend/
-backend/frontend/
-backend/ajv/
-backend/package.json
-__pycache__/
-*.pyc
+.env
+.vscode/
+.idea/

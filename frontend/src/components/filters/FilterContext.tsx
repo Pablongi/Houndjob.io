@@ -1,8 +1,10 @@
+// /frontend/src/components/filters/FilterContext.tsx
 import { FilterState } from '@/types/filter';
 import { Job } from '@/types/job';
 import { supabase } from '@/supabase';
 import { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useTagsHierarchy } from '@/hooks/useTags';
 
 interface AppContextType {
   filters: FilterState;
@@ -13,6 +15,9 @@ interface AppContextType {
   setStrictMode: React.Dispatch<React.SetStateAction<boolean>>;
   user: Session['user'] | null;
   setUser: React.Dispatch<React.SetStateAction<Session['user'] | null>>;
+  categoriesData: any[];
+  catToSubs: Map<string, Set<string>>;
+  subToTags: Map<string, Set<string>>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -25,35 +30,39 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         const parsed = JSON.parse(savedFilters);
         return {
           ...parsed,
-          selectedCategories: Array.isArray(parsed.selectedCategories) ? new Set(parsed.selectedCategories) : new Set(),
-          selectedSubcategories: Array.isArray(parsed.selectedSubcategories) ? new Set(parsed.selectedSubcategories) : new Set(),
-          selectedTags: Array.isArray(parsed.selectedTags) ? new Set(parsed.selectedTags) : new Set(),
-          selectedPortals: Array.isArray(parsed.selectedPortals) ? new Set(parsed.selectedPortals) : new Set(),
-          selectedCountries: Array.isArray(parsed.selectedCountries) ? new Set(parsed.selectedCountries) : new Set(),
-          selectedRegions: Array.isArray(parsed.selectedRegions) ? new Set(parsed.selectedRegions) : new Set(),
-          selectedJobTitles: Array.isArray(parsed.selectedJobTitles) ? new Set(parsed.selectedJobTitles) : new Set(),
-          selectedModalities: Array.isArray(parsed.selectedModalities) ? new Set(parsed.selectedModalities) : new Set(),
-          selectedExperiences: Array.isArray(parsed.selectedExperiences) ? new Set(parsed.selectedExperiences) : new Set(),
+          selectedCategories: Array.isArray(parsed.selectedCategories) ? new Set<string>(parsed.selectedCategories) : new Set<string>(),
+          selectedSubcategories: Array.isArray(parsed.selectedSubcategories) ? new Set<string>(parsed.selectedSubcategories) : new Set<string>(),
+          selectedTags: Array.isArray(parsed.selectedTags) ? new Set<string>(parsed.selectedTags) : new Set<string>(),
+          selectedPortals: Array.isArray(parsed.selectedPortals) ? new Set<string>(parsed.selectedPortals) : new Set<string>(),
+          selectedCountries: Array.isArray(parsed.selectedCountries) ? new Set<string>(parsed.selectedCountries) : new Set<string>(),
+          selectedRegions: Array.isArray(parsed.selectedRegions) ? new Set<string>(parsed.selectedRegions) : new Set<string>(),
+          selectedJobTitles: Array.isArray(parsed.selectedJobTitles) ? new Set<string>(parsed.selectedJobTitles) : new Set<string>(),
+          selectedModalities: Array.isArray(parsed.selectedModalities) ? new Set<string>(parsed.selectedModalities) : new Set<string>(),
+          selectedExperiences: Array.isArray(parsed.selectedExperiences) ? new Set<string>(parsed.selectedExperiences) : new Set<string>(),
+          selectedSalary: Array.isArray(parsed.selectedSalary) ? new Set<string>(parsed.selectedSalary) : new Set<string>(),   // ←←← AGREGADO
         };
       }
     } catch (e) {
       console.warn('Invalid filters in localStorage, resetting.');
       localStorage.removeItem('filters');
     }
+
     return {
       search: '',
-      selectedCategories: new Set(),
-      selectedSubcategories: new Set(),
-      selectedTags: new Set(),
-      selectedPortals: new Set(),
-      selectedCountries: new Set(),
-      selectedRegions: new Set(),
+      selectedCategories: new Set<string>(),
+      selectedSubcategories: new Set<string>(),
+      selectedTags: new Set<string>(),
+      selectedPortals: new Set<string>(),
+      selectedCountries: new Set<string>(),
+      selectedRegions: new Set<string>(),
       company: '',
-      selectedJobTitles: new Set(),
-      selectedModalities: new Set(),
-      selectedExperiences: new Set(),
+      selectedJobTitles: new Set<string>(),
+      selectedModalities: new Set<string>(),
+      selectedExperiences: new Set<string>(),
+      selectedSalary: new Set<string>(),           // ←←← AGREGADO
     };
   });
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [strictMode, setStrictMode] = useState(() => {
     try {
@@ -65,21 +74,39 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   });
   const [user, setUser] = useState<Session['user'] | null>(null);
 
+  const { data: categoriesData = [] } = useTagsHierarchy();
+
+  const catToSubs = React.useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    categoriesData.forEach((cat: any) => {
+      const subs = new Set<string>(cat.subcategories?.map((s: any) => s.name) || []);
+      map.set(cat.name, subs);
+    });
+    return map;
+  }, [categoriesData]);
+
+  const subToTags = React.useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    categoriesData.forEach((cat: any) => {
+      cat.subcategories?.forEach((sub: any) => {
+        const tags = new Set<string>(sub.tags?.map((t: any) => t.name) || []);
+        map.set(sub.name, tags);
+      });
+    });
+    return map;
+  }, [categoriesData]);
+
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    return () => authListener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => { 
+  useEffect(() => {
     try {
       const serializableFilters = {
         ...filters,
@@ -92,6 +119,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         selectedJobTitles: Array.from(filters.selectedJobTitles),
         selectedModalities: Array.from(filters.selectedModalities),
         selectedExperiences: Array.from(filters.selectedExperiences),
+        selectedSalary: Array.from(filters.selectedSalary),     // ←←← AGREGADO
       };
       localStorage.setItem('filters', JSON.stringify(serializableFilters));
       localStorage.setItem('strictMode', JSON.stringify(strictMode));
@@ -101,7 +129,19 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [filters, strictMode]);
 
   return (
-    <AppContext.Provider value={{ filters, setFilters, jobs, setJobs, strictMode, setStrictMode, user, setUser }}>
+    <AppContext.Provider value={{
+      filters,
+      setFilters,
+      jobs,
+      setJobs,
+      strictMode,
+      setStrictMode,
+      user,
+      setUser,
+      categoriesData,
+      catToSubs,
+      subToTags
+    }}>
       {children}
     </AppContext.Provider>
   );
