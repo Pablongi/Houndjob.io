@@ -7,8 +7,18 @@ primary_region = 'gru'
   auto_stop_machines = true
   min_machines_running = 1
 
+# ====================== MÁQUINA 1: API (siempre encendida) ======================
+[[processes]]
+  name = "api"
+  cmd = "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers=2 app:app"
+
+# ====================== MÁQUINA 2: Scraper Worker ======================
+[[processes]]
+  name = "worker"
+  cmd = "python -m scrapers.runner"   # o python scheduler.py si prefieres
+
 [[vm]]
-  size = "shared-cpu-1x"     # ← Costo < 15.000 CLP/mes
+  size = "shared-cpu-1x"
   memory = "256mb"
   cpu_kind = "shared"
   cpus = 1

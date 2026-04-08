@@ -32,18 +32,20 @@ const mapToJob = (row: any): Job => ({
 export const useJobsWithCache = () => {
   const { filters } = useAppContext();
 
+  const apiUrl = import.meta.env.VITE_API_URL || 'NO_DEFINIDO';
+
+  logger.info(`🔗 VITE_API_URL detectado: "${apiUrl}"`);
+
   const query = useInfiniteQuery({
     queryKey: ['jobs', JSON.stringify(filters)],
 
     queryFn: async ({ pageParam = 0 }) => {
-      logger.actionStart(`Cargando página ${pageParam}`);
+      logger.actionStart(`🔄 Cargando página ${pageParam}`);
 
       const params = new URLSearchParams({
         page: pageParam.toString(),
         size: PAGE_SIZE.toString(),
       });
-
-      logger.debug('🔍 Filtros enviados al backend:', Object.fromEntries(params));
 
       if (filters.selectedPortals.size) params.append('portals', Array.from(filters.selectedPortals).join(','));
       if (filters.selectedModalities.size) params.append('modalities', Array.from(filters.selectedModalities).join(','));
@@ -53,24 +55,34 @@ export const useJobsWithCache = () => {
       if (filters.company) params.append('company', filters.company);
       if (filters.search) params.append('search', filters.search);
 
+      const fullUrl = `${apiUrl}/api/jobs?${params.toString()}`;
+
+      logger.info(`📡 Fetching → ${fullUrl}`);
+
       try {
-        const res = await fetch(`/api/jobs?${params.toString()}`);
+        const res = await fetch(fullUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        logger.info(`📥 Respuesta recibida - Status: ${res.status} ${res.statusText}`);
 
         if (!res.ok) {
           const errorText = await res.text();
-          logger.actionEnd(`Cargando página ${pageParam}`, false, { status: res.status, error: errorText });
+          logger.error(`❌ Error ${res.status}: ${errorText}`);
           throw new Error(`Error ${res.status}: ${errorText}`);
         }
 
         const data = await res.json();
-        logger.actionEnd(`Cargando página ${pageParam}`, true, { jobs: data.jobs?.length || 0 });
+        logger.success(`✅ Página ${pageParam} cargada correctamente (${data.jobs?.length || 0} jobs)`);
+
         return {
           jobs: data.jobs.map(mapToJob),
           page: pageParam,
           hasMore: data.hasMore ?? false,
         };
-      } catch (err) {
-        logger.actionEnd(`Cargando página ${pageParam}`, false, err);
+      } catch (err: any) {
+        logger.error(`💥 Excepción en fetch: ${err.message}`);
         throw err;
       }
     },
@@ -79,7 +91,7 @@ export const useJobsWithCache = () => {
     initialPageParam: 0,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: 2,
+    retry: 1,
     refetchOnWindowFocus: false,
   });
 
