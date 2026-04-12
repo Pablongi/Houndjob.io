@@ -76,7 +76,7 @@ class BaseScraper(ABC):
         jobs = await self.scrape(country_code, self.max_pages)
 
         if jobs:
-            success = await upsert_job_batch(jobs)
+            success = upsert_job_batch(jobs)
             duration = round(time.time() - start, 2)
             logger.success(f"✅ {self.name} → {len(jobs)} empleos guardados en {duration}s")
         else:

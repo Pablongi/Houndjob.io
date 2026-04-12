@@ -1,10 +1,10 @@
-cat > backend/scrapers/laborum.py << 'EOF'
 from scrapers.base_scraper import BaseScraper
 import asyncio
 import random
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from utils.logger import logger
+
 
 class LaborumScraper(BaseScraper):
     name = "Laborum"
@@ -77,7 +77,7 @@ class LaborumScraper(BaseScraper):
             logger.error(f"❌ Error en Laborum: {e}")
             return jobs
 
+
 if __name__ == "__main__":
     scraper = LaborumScraper()
     asyncio.run(scraper.run("cl"))
-EOF
