@@ -1,110 +1,87 @@
 # /backend/scrapers/laborum.py
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-
-# ←←← Carga el .env desde la raíz del proyecto (funciona siempre)
-BASE_DIR = Path(__file__).resolve().parent.parent  # sube a la carpeta houndjob/
-load_dotenv(BASE_DIR / ".env")
-
 from scrapers.base_scraper import BaseScraper
 import asyncio
 import random
 from playwright.async_api import async_playwright
-from scrapegraphai.graphs import SmartScraperGraph
+from bs4 import BeautifulSoup
 from utils.logger import logger
+
 
 class LaborumScraper(BaseScraper):
     name = "Laborum"
-    difficulty = 3
+    difficulty = 2
     supported_countries = ["cl"]
-    max_pages = 1
-
-    def __init__(self):
-        super().__init__()
-        self.llm_config = {
-            "api_key": os.getenv("GROQ_API_KEY"),
-            "model": "llama-3.3-70b-versatile",
-        }
+    max_pages = 1          # Solo primera página (como pediste)
+    max_jobs = 20          # Límite para que sea rápido
 
     async def scrape(self, country_code: str = "cl", max_pages: int = None):
         jobs = []
-        logger.info(f"🚀 {self.name} - Iniciando con Playwright + HTML directo a ScrapeGraphAI")
+        logger.info(f"🚀 {self.name} - Iniciando versión simplificada (solo página 1 + {self.max_jobs} empleos)")
 
         try:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
                 context = await browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                     viewport={"width": 1920, "height": 1080},
-                    extra_http_headers={
-                        "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
-                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                        "Referer": "https://www.google.com/",
-                        "Sec-Fetch-Site": "none",
-                        "Sec-Fetch-Mode": "navigate",
-                    }
                 )
-
                 page = await context.new_page()
-                await page.goto("https://www.laborum.cl/empleos.html", wait_until="domcontentloaded", timeout=90000)
-                await page.wait_for_timeout(random.randint(8000, 15000))  # más tiempo humano
+
+                url = "https://www.laborum.cl/empleos.html"
+                logger.info(f"📄 Cargando página 1 → {url}")
+
+                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                await page.wait_for_timeout(random.randint(7000, 10000))  # Espera más para que React renderice
 
                 html = await page.content()
-                with open("laborum_raw_html.html", "w", encoding="utf-8") as f:
+                soup = BeautifulSoup(html, "html.parser")
+
+                # Guardamos el HTML para análisis rápido
+                with open("laborum_pagina_1.html", "w", encoding="utf-8") as f:
                     f.write(html)
-                logger.info("💾 HTML crudo guardado (para diagnóstico)")
+
+                # Selectores más robustos basados en la estructura real de Laborum
+                # Buscamos todos los links que van a /empleos/
+                job_links = soup.select("a[href*='/empleos/']")
+
+                logger.info(f"🔍 Encontrados {len(job_links)} enlaces de empleo en página 1")
+
+                for i, link in enumerate(job_links[:self.max_jobs]):
+                    try:
+                        # Título está en <h2> dentro del card
+                        title_elem = link.select_one("h2, h3")
+                        title = title_elem.get_text(strip=True) if title_elem else "Sin título"
+
+                        # Empresa está en <h3> cerca del título
+                        company_elem = link.select_one("h3")
+                        company = company_elem.get_text(strip=True) if company_elem and company_elem != title_elem else "Sin empresa"
+
+                        job_url = "https://www.laborum.cl" + link["href"]
+
+                        if title and title != "Sin título":
+                            job = self.create_job(
+                                title=title,
+                                company=company,
+                                city="Santiago",
+                                region="Metropolitana",
+                                description="Extraído de Laborum (página 1)",
+                                link=job_url,
+                                source_url=url
+                            )
+                            jobs.append(job)
+                            logger.info(f"   ✓ Empleo {len(jobs)}: {title[:70]}...")
+
+                    except Exception:
+                        continue
 
                 await browser.close()
 
-            # ←←← AQUÍ ESTÁ EL CAMBIO IMPORTANTE ←←←
-            # Pasamos el HTML directamente en vez de la URL
-            def run_graph():
-                graph = SmartScraperGraph(
-                    prompt="""
-                    Eres un experto en extracción de empleos. Analiza el HTML de Laborum y extrae TODOS los empleos visibles.
-                    Devuelve SOLO un array JSON válido con este formato exacto:
-                    [
-                      {
-                        "title": "...",
-                        "company": "...",
-                        "city": "...",
-                        "region": "...",
-                        "description": "...",
-                        "salary": "...",
-                        "link": "..."
-                      }
-                    ]
-                    """,
-                    source=html,                    # ← HTML en vez de URL
-                    config={"llm": self.llm_config}
-                )
-                return graph.run()
-
-            result = await asyncio.to_thread(run_graph)
-            logger.info(f"📥 Respuesta cruda de Groq: {result}")
-
-            if isinstance(result, list) and len(result) > 0:
-                for item in result:
-                    job = self.create_job(
-                        title=item.get("title", "Sin título"),
-                        company=item.get("company", "Sin empresa"),
-                        city=item.get("city", "Sin ciudad"),
-                        region=item.get("region", "Metropolitana"),
-                        description=item.get("description", ""),
-                        salary=item.get("salary"),
-                        link=item.get("link", ""),
-                        source_url="https://www.laborum.cl/empleos.html"
-                    )
-                    jobs.append(job)
-                logger.success(f"✅ ScrapeGraphAI extrajo {len(jobs)} empleos de Laborum")
-            else:
-                logger.warning("⚠️ Groq devolvió array vacío")
+            logger.info(f"✅ Laborum → {len(jobs)} empleos extraídos de la primera página")
+            return jobs
 
         except Exception as e:
             logger.error(f"❌ Error en Laborum: {e}")
-
-        return jobs
+            return jobs
 
 
 if __name__ == "__main__":
